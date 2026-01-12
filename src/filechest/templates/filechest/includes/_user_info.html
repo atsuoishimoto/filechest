@@ -1,0 +1,13 @@
+{% if adhoc_mode %}
+    {% if role %}<span class="role-badge role-{{ role }}">({{ role }})</span>{% endif %}
+{% elif user.is_authenticated %}
+    <span class="username">{{ user.username }}{% if role %} <span class="role-badge role-{{ role }}">({{ role }})</span>{% endif %}</span>
+    <form action="{% url 'filechest:logout' %}" method="post" style="display:inline;">
+        {% csrf_token %}
+        {% if request.path %}<input type="hidden" name="next" value="{{ request.path }}">{% endif %}
+        <button type="submit" class="btn-logout">Logout</button>
+    </form>
+{% else %}
+    {% if role %}<span class="role-badge role-{{ role }}">{{ role }}</span>{% endif %}
+    <a href="{% url 'filechest:login' %}{% if request.path %}?next={{ request.path }}{% endif %}" class="btn-login">Login</a>
+{% endif %}

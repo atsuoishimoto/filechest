@@ -1,0 +1,105 @@
+{% extends "filechest/base.html" %}
+{% load static filechest_tags %}
+
+{% block title %}{{ filename }} - {{ volume.verbose_name }} - FileChest{% endblock %}
+
+{% block content %}
+    <div class="container wide">
+        <div class="header">
+            <h1>{{ volume.verbose_name }}</h1>
+            <div class="user-info">
+                {% include "filechest/includes/_user_info.html" %}
+            </div>
+        </div>
+
+        <div class="file-header">
+            <h2>{{ filename }}</h2>
+            <div class="header-actions">
+                {% if parent_path %}
+                <a href="{% url 'filechest:browse' volume.name parent_path %}" class="btn-back">Back</a>
+                {% else %}
+                <a href="{% url 'filechest:index' volume.name %}" class="btn-back">Back</a>
+                {% endif %}
+                <a href="{% url 'filechest:api_download' volume.name filepath %}" class="btn-download">Download</a>
+            </div>
+        </div>
+
+        <div class="breadcrumb">
+            <a href="{% url 'filechest:index' volume.name %}">{{ volume.verbose_name }}</a>
+            {% for item in breadcrumb %}
+                <span>/</span>
+                <a href="{% url 'filechest:browse' volume.name item.path %}">{{ item.name }}</a>
+            {% endfor %}
+            <span>/</span>
+            <strong>{{ filename }}</strong>
+        </div>
+
+        <div class="file-meta">
+            <div><strong>Size:</strong> {{ file_size|filesizeformat }}</div>
+            <div><strong>Modified:</strong> {{ file_modified|timestamp_to_date }}</div>
+            <div><strong>Type:</strong> {{ mime_type }}</div>
+        </div>
+
+        <div class="preview-container">
+            {% if preview_type == 'image' %}
+            <div class="preview-image">
+                <img src="{% url 'filechest:api_raw' volume.name filepath %}" alt="{{ filename }}">
+            </div>
+
+            {% elif preview_type == 'video' %}
+            <div class="preview-video">
+                <video controls>
+                    <source src="{% url 'filechest:api_raw' volume.name filepath %}" type="{{ mime_type }}">
+                    Your browser does not support the video element.
+                </video>
+            </div>
+
+            {% elif preview_type == 'audio' %}
+            <div class="preview-audio">
+                <audio controls>
+                    <source src="{% url 'filechest:api_raw' volume.name filepath %}" type="{{ mime_type }}">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+
+            {% elif preview_type == 'text' %}
+            <div class="preview-text">
+                <div id="text-content" class="loading">Loading...</div>
+            </div>
+
+            {% elif preview_type == 'pdf' %}
+            <div class="preview-pdf">
+                <iframe src="{% url 'filechest:api_raw' volume.name filepath %}"></iframe>
+            </div>
+
+            {% else %}
+            <div class="preview-unknown">
+                <div class="icon">{{ filename|file_icon:False }}</div>
+                <p>Preview not available for this file type.</p>
+                <a href="{% url 'filechest:api_download' volume.name filepath %}" class="btn-download">Download File</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    {% if preview_type == 'text' %}
+    <script>
+        (async function() {
+            const container = document.getElementById('text-content');
+            try {
+                const response = await fetch("{% url 'filechest:api_raw' volume.name filepath %}");
+                if (!response.ok) throw new Error('Failed to load');
+                const text = await response.text();
+                const pre = document.createElement('pre');
+                pre.textContent = text;
+                container.innerHTML = '';
+                container.appendChild(pre);
+            } catch (e) {
+                container.textContent = 'Failed to load file content.';
+            }
+        })();
+    </script>
+    {% endif %}
+{% endblock %}

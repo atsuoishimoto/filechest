@@ -1,0 +1,866 @@
+{% extends "filechest/base.html" %}
+{% load static filechest_tags %}
+
+{% block title %}{{ volume.verbose_name }} - FileChest{% endblock %}
+
+{% block content %}
+    <div class="container{% if can_edit %} drop-zone{% endif %}" id="drop-zone">
+        <div class="header">
+            <div class="header-left">
+                <div class="volume-selector">
+                    <button class="volume-btn" onclick="toggleVolumeMenu()">
+                        <span class="volume-icon">{% if volume.is_s3 %}🪣{% else %}📁{% endif %}</span>
+                        <span class="volume-name">{{ volume.verbose_name }}</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div id="volume-menu" class="volume-menu">
+                        {% for v in available_volumes %}
+                        <a href="{% url 'filechest:index' v.name %}" class="volume-item{% if v.name == volume.name %} active{% endif %}">
+                            <span class="volume-item-icon">{% if v.is_s3 %}🪣{% else %}📁{% endif %}</span>
+                            <span class="volume-item-name">{{ v.verbose_name }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="user-info">
+                {% include "filechest/includes/_user_info.html" %}
+            </div>
+        </div>
+
+        <div class="breadcrumb">
+            <a href="{% url 'filechest:index' volume.name %}">{{ volume.verbose_name }}</a>
+            {% for item in breadcrumb %}
+                <span>/</span>
+                <a href="{% url 'filechest:browse' volume.name item.path %}">{{ item.name }}</a>
+            {% endfor %}
+        </div>
+
+        {% if can_edit %}
+        <div class="toolbar">
+            <label>
+                <input type="file" id="file-input" multiple>
+                📤 Upload
+            </label>
+            <button onclick="showNewFolderModal()">📁 New Folder</button>
+            <span class="spacer"></span>
+            <button id="btn-rename" onclick="showRenameModal()" disabled>✏️ Rename</button>
+            <button id="btn-mark" onclick="markItems()" disabled>📌 Mark</button>
+            <button id="btn-delete" class="danger" onclick="showDeleteModal()" disabled>🗑️ Delete</button>
+            <span class="separator">|</span>
+            <button id="btn-copy-here" onclick="copyHere()" disabled>📋 Copy</button>
+            <button id="btn-move-here" onclick="moveHere()" disabled>📦 Move</button>
+            <button id="btn-clear-marks" onclick="clearClipboard()" style="display:none;">✕ Clear</button>
+        </div>
+        {% endif %}
+
+        {% if items %}
+        <ul class="file-list">
+            {% for item in items %}
+            <li class="file-item" data-name="{{ item.name }}" data-is-dir="{{ item.is_dir|yesno:'true,false' }}">
+                {% if can_edit %}
+                <input type="checkbox" class="file-checkbox" onchange="updateSelection()">
+                {% endif %}
+                {% if item.is_dir %}
+                    {% if subpath %}
+                <a href="{% url 'filechest:browse' volume.name subpath|add_path:item.name %}" class="file-link">
+                    {% else %}
+                <a href="{% url 'filechest:browse' volume.name item.name %}" class="file-link">
+                    {% endif %}
+                {% else %}
+                    {% if subpath %}
+                <a href="{% url 'filechest:preview' volume.name subpath|add_path:item.name %}" class="file-link">
+                    {% else %}
+                <a href="{% url 'filechest:preview' volume.name item.name %}" class="file-link">
+                    {% endif %}
+                {% endif %}
+                    <span class="file-icon">{{ item.name|file_icon:item.is_dir }}</span>
+                    <span class="file-name">{{ item.name }}</span>
+                </a>
+                <span class="file-size">
+                    {% if item.is_dir %}-{% else %}{{ item.size|filesizeformat }}{% endif %}
+                </span>
+                <span class="file-date">{{ item.modified|timestamp_to_date }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty">Empty directory</div>
+        {% endif %}
+    </div>
+
+    {% if can_edit %}
+    <!-- New Folder Modal -->
+    <div id="modal-newfolder" class="modal">
+        <div class="modal-content">
+            <h3>New Folder</h3>
+            <input type="text" id="newfolder-name" placeholder="Folder name">
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal('modal-newfolder')">Cancel</button>
+                <button class="btn-ok" onclick="createFolder()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Modal -->
+    <div id="modal-rename" class="modal">
+        <div class="modal-content">
+            <h3>Rename</h3>
+            <input type="text" id="rename-name" placeholder="New name">
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal('modal-rename')">Cancel</button>
+                <button class="btn-ok" onclick="renameItem()">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div id="modal-delete" class="modal">
+        <div class="modal-content">
+            <h3>Delete</h3>
+            <p id="delete-message">Are you sure you want to delete the selected items?</p>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal('modal-delete')">Cancel</button>
+                <button class="btn-danger" onclick="deleteItems()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="modal-upload" class="modal">
+        <div class="modal-content modal-upload-content">
+            <h3>Upload Files</h3>
+            <div class="upload-file-list" id="upload-file-list"></div>
+            <div class="form-group">
+                <label for="upload-dest">Destination:</label>
+                <input type="text" id="upload-dest" placeholder="/">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="upload-create-dir">
+                    Create directory if it doesn't exist
+                </label>
+            </div>
+            <div id="upload-error" class="upload-error"></div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeUploadModal()">Cancel</button>
+                <button class="btn-ok" onclick="executeUpload()">Upload</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Result Modal (for success/errors) -->
+    <div id="modal-result" class="modal">
+        <div class="modal-content">
+            <h3 id="result-title">Result</h3>
+            <p id="result-message" style="display:none;"></p>
+            <ul id="result-list" class="error-list"></ul>
+            <div class="modal-buttons">
+                <button class="btn-ok" onclick="closeResultAndReload()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Progress -->
+    <div id="upload-overlay" class="upload-overlay">
+        <div class="upload-progress">
+            <h3>Uploading...</h3>
+            <div class="progress-bar">
+                <div id="progress-bar-fill" class="progress-bar-fill"></div>
+            </div>
+            <div id="progress-text" class="progress-text">0%</div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        const volumeName = "{{ volume.name }}";
+        const currentPath = "{{ subpath }}";
+        const currentUser = "{{ user.username|default:'' }}";
+        const apiBase = "{% url 'filechest:api_list' volume.name %}".replace(/list\/$/, '');
+
+        // CSRF token helper
+        function getCsrfToken() {
+            const cookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+            return cookie ? cookie.split('=')[1] : '';
+        }
+
+        // Volume selector
+        function toggleVolumeMenu() {
+            document.getElementById('volume-menu').classList.toggle('show');
+        }
+
+        // Close volume menu when clicking outside
+        document.addEventListener('click', function(e) {
+            const volumeSelector = document.querySelector('.volume-selector');
+            if (volumeSelector && !volumeSelector.contains(e.target)) {
+                document.getElementById('volume-menu').classList.remove('show');
+            }
+        });
+
+        function getSelectedItems() {
+            const items = [];
+            document.querySelectorAll('.file-item').forEach(item => {
+                const checkbox = item.querySelector('.file-checkbox');
+                if (checkbox && checkbox.checked) {
+                    const name = item.dataset.name;
+                    items.push(currentPath ? `${currentPath}/${name}` : name);
+                }
+            });
+            return items;
+        }
+
+        function updateSelection() {
+            const selected = getSelectedItems();
+            const hasSelection = selected.length > 0;
+            const singleSelection = selected.length === 1;
+
+            document.getElementById('btn-delete').disabled = !hasSelection;
+            document.getElementById('btn-mark').disabled = !hasSelection;
+            document.getElementById('btn-rename').disabled = !singleSelection;
+
+            document.querySelectorAll('.file-item').forEach(item => {
+                const checkbox = item.querySelector('.file-checkbox');
+                item.classList.toggle('selected', checkbox && checkbox.checked);
+            });
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.file-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+            updateSelection();
+        }
+
+        function showModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} active`;
+            setTimeout(() => toast.classList.remove('active'), 3000);
+        }
+
+        function formatErrorMessage(error, path) {
+            if (path) {
+                return `${path}: ${error}`;
+            }
+            return error;
+        }
+
+        function showResult(title, message, errors = [], pathKey = 'item') {
+            document.getElementById('result-title').textContent = title;
+            const msgEl = document.getElementById('result-message');
+            const listEl = document.getElementById('result-list');
+
+            if (message) {
+                msgEl.textContent = message;
+                msgEl.style.display = 'block';
+            } else {
+                msgEl.style.display = 'none';
+            }
+
+            if (errors.length > 0) {
+                listEl.innerHTML = errors.map(e => {
+                    const path = e[pathKey] || '';
+                    return `<li>${formatErrorMessage(e.error, path)}</li>`;
+                }).join('');
+                listEl.style.display = 'block';
+            } else {
+                listEl.style.display = 'none';
+            }
+
+            showModal('modal-result');
+        }
+
+        function closeResultAndReload() {
+            closeModal('modal-result');
+            location.reload();
+        }
+
+        async function apiCall(endpoint, data) {
+            const response = await fetch(`${apiBase}${endpoint}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify(data)
+            });
+            return response.json();
+        }
+
+        function showNewFolderModal() {
+            document.getElementById('newfolder-name').value = '';
+            showModal('modal-newfolder');
+            document.getElementById('newfolder-name').focus();
+        }
+
+        async function createFolder() {
+            const name = document.getElementById('newfolder-name').value.trim();
+            if (!name) return;
+
+            const result = await apiCall('mkdir', { path: currentPath, name });
+            closeModal('modal-newfolder');
+
+            if (result.success) {
+                showToast(`Folder "${name}" created`);
+                location.reload();
+            } else {
+                showToast(formatErrorMessage(result.error, result.path), 'error');
+            }
+        }
+
+        function showRenameModal() {
+            const selected = document.querySelector('.file-item.selected');
+            if (!selected) return;
+
+            document.getElementById('rename-name').value = selected.dataset.name;
+            showModal('modal-rename');
+            document.getElementById('rename-name').focus();
+        }
+
+        async function renameItem() {
+            const selected = document.querySelector('.file-item.selected');
+            if (!selected) return;
+
+            const oldName = selected.dataset.name;
+            const newName = document.getElementById('rename-name').value.trim();
+            if (!newName || newName === oldName) {
+                closeModal('modal-rename');
+                return;
+            }
+
+            const path = currentPath ? `${currentPath}/${oldName}` : oldName;
+            const result = await apiCall('rename', { path, new_name: newName });
+            closeModal('modal-rename');
+
+            if (result.success) {
+                showToast(`Renamed to "${newName}"`);
+                location.reload();
+            } else {
+                showToast(formatErrorMessage(result.error, result.path), 'error');
+            }
+        }
+
+        function showDeleteModal() {
+            const count = getSelectedItems().length;
+            document.getElementById('delete-message').textContent =
+                `Are you sure you want to delete ${count} item(s)?`;
+            showModal('modal-delete');
+        }
+
+        async function deleteItems() {
+            const items = getSelectedItems();
+            if (items.length === 0) return;
+
+            const result = await apiCall('delete', { items });
+            closeModal('modal-delete');
+
+            const successMsg = result.deleted.length > 0 ? `${result.deleted.length} item(s) deleted` : null;
+            const title = result.errors.length > 0 ? 'Delete Result' : 'Deleted';
+            showResult(title, successMsg, result.errors, 'item');
+        }
+
+        // Clipboard management for Mark/Copy/Move
+        function getClipboard() {
+            const data = localStorage.getItem('filechest_clipboard');
+            if (!data) return null;
+
+            const clipboard = JSON.parse(data);
+            // Invalid if volume or user differs
+            if (clipboard.volume !== volumeName || clipboard.user !== currentUser) {
+                return null;
+            }
+            return clipboard;
+        }
+
+        function setClipboard(items) {
+            localStorage.setItem('filechest_clipboard', JSON.stringify({
+                volume: volumeName,
+                user: currentUser,
+                items: items
+            }));
+            updateClipboardButtons();
+        }
+
+        function clearClipboard() {
+            localStorage.removeItem('filechest_clipboard');
+            updateClipboardButtons();
+        }
+
+        function getParentPath(path) {
+            const parts = path.split('/');
+            parts.pop();
+            return parts.join('/');
+        }
+
+        function updateClipboardButtons() {
+            const clipboard = getClipboard();
+            const copyBtn = document.getElementById('btn-copy-here');
+            const moveBtn = document.getElementById('btn-move-here');
+            const clearBtn = document.getElementById('btn-clear-marks');
+
+            if (clipboard && clipboard.items.length > 0) {
+                const count = clipboard.items.length;
+                // Check if any marked item is in the current directory
+                const isSourceDir = clipboard.items.some(item => getParentPath(item) === currentPath);
+
+                copyBtn.disabled = isSourceDir;
+                moveBtn.disabled = isSourceDir;
+                copyBtn.textContent = `📋 Copy (${count})`;
+                moveBtn.textContent = `📦 Move (${count})`;
+                clearBtn.style.display = 'inline-block';
+            } else {
+                copyBtn.disabled = true;
+                moveBtn.disabled = true;
+                copyBtn.textContent = '📋 Copy here';
+                moveBtn.textContent = '📦 Move here';
+                clearBtn.style.display = 'none';
+            }
+        }
+
+        function markItems() {
+            const items = getSelectedItems();
+            if (items.length === 0) return;
+
+            const clipboard = getClipboard();
+            let newItems;
+
+            if (clipboard) {
+                // Add new items to existing clipboard (avoid duplicates)
+                const existingSet = new Set(clipboard.items);
+                const addedItems = items.filter(item => !existingSet.has(item));
+                if (addedItems.length === 0) {
+                    // All items already marked, just clear selection
+                    clearSelection();
+                    return;
+                }
+                newItems = [...clipboard.items, ...addedItems];
+            } else {
+                newItems = items;
+            }
+
+            setClipboard(newItems);
+            showToast(`${newItems.length} item(s) marked`);
+            clearSelection();
+        }
+
+        async function copyHere() {
+            const clipboard = getClipboard();
+            if (!clipboard) return;
+
+            const result = await apiCall('copy', {
+                items: clipboard.items,
+                destination: currentPath
+            });
+
+            clearClipboard();
+            const successMsg = result.copied.length > 0 ? `${result.copied.length} item(s) copied` : null;
+            const title = result.errors.length > 0 ? 'Copy Result' : 'Copied';
+            showResult(title, successMsg, result.errors, 'item');
+        }
+
+        async function moveHere() {
+            const clipboard = getClipboard();
+            if (!clipboard) return;
+
+            const result = await apiCall('move', {
+                items: clipboard.items,
+                destination: currentPath
+            });
+
+            clearClipboard();
+            const successMsg = result.moved.length > 0 ? `${result.moved.length} item(s) moved` : null;
+            const title = result.errors.length > 0 ? 'Move Result' : 'Moved';
+            showResult(title, successMsg, result.errors, 'item');
+        }
+
+        // File upload configuration (from server)
+        const MAX_FILE_SIZE = {{ volume.max_file_size }};
+        let pendingUploadFiles = null;  // Array of File objects or {file, relativePath} objects
+        let uploadHasRelativePaths = false;  // Whether files have relative paths (directory upload)
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+        }
+
+        function validateFiles(files, hasRelativePaths = false) {
+            const errors = [];
+            for (const item of files) {
+                const file = hasRelativePaths ? item.file : item;
+                const name = hasRelativePaths ? item.relativePath : file.name;
+                if (file.size > MAX_FILE_SIZE) {
+                    errors.push(`"${name}" exceeds limit of ${formatFileSize(MAX_FILE_SIZE)} (${formatFileSize(file.size)})`);
+                }
+            }
+            return errors;
+        }
+
+        function showUploadModal(files) {
+            if (files.length === 0) return;
+
+            // Convert FileList to Array to prevent reference issues when input is cleared
+            const fileArray = Array.from(files);
+
+            // Validate file sizes first
+            const sizeErrors = validateFiles(fileArray, false);
+            if (sizeErrors.length > 0) {
+                showToast(sizeErrors[0], 'error');
+                return;
+            }
+
+            pendingUploadFiles = fileArray;
+            uploadHasRelativePaths = false;
+
+            // Build file list HTML
+            const fileListEl = document.getElementById('upload-file-list');
+            fileListEl.innerHTML = fileArray.map(f => `
+                <div class="upload-file-item">
+                    <span class="upload-file-name">${f.name}</span>
+                    <span class="upload-file-size">${formatFileSize(f.size)}</span>
+                </div>
+            `).join('');
+
+            // Set default destination
+            document.getElementById('upload-dest').value = currentPath || '/';
+
+            // Reset checkbox and clear error
+            document.getElementById('upload-create-dir').checked = false;
+            document.getElementById('upload-error').classList.remove('active');
+            document.getElementById('upload-error').textContent = '';
+
+            showModal('modal-upload');
+        }
+
+        function showUploadModalWithPaths(filesWithPaths) {
+            if (filesWithPaths.length === 0) return;
+
+            // Validate file sizes
+            const sizeErrors = validateFiles(filesWithPaths, true);
+            if (sizeErrors.length > 0) {
+                showToast(sizeErrors[0], 'error');
+                return;
+            }
+
+            pendingUploadFiles = filesWithPaths;
+            uploadHasRelativePaths = true;
+
+            // Build file list HTML with relative paths
+            const fileListEl = document.getElementById('upload-file-list');
+            fileListEl.innerHTML = filesWithPaths.map(item => `
+                <div class="upload-file-item">
+                    <span class="upload-file-name">${item.relativePath}</span>
+                    <span class="upload-file-size">${formatFileSize(item.file.size)}</span>
+                </div>
+            `).join('');
+
+            // Set default destination
+            document.getElementById('upload-dest').value = currentPath || '/';
+
+            // Enable create dir by default for directory uploads
+            document.getElementById('upload-create-dir').checked = true;
+            document.getElementById('upload-error').classList.remove('active');
+            document.getElementById('upload-error').textContent = '';
+
+            showModal('modal-upload');
+        }
+
+        function closeUploadModal() {
+            closeModal('modal-upload');
+            pendingUploadFiles = null;
+        }
+
+        async function executeUpload() {
+            if (!pendingUploadFiles || pendingUploadFiles.length === 0) return;
+
+            let destPath = document.getElementById('upload-dest').value.trim();
+            // Normalize path: remove leading/trailing slashes, handle root
+            if (destPath === '/' || destPath === '') {
+                destPath = '';
+            } else {
+                destPath = destPath.replace(/^\/+|\/+$/g, '');
+            }
+
+            // If checkbox is checked, create the directory first
+            const createDir = document.getElementById('upload-create-dir').checked;
+            if (createDir && destPath) {
+                const parts = destPath.split('/');
+                let pathSoFar = '';
+                for (const part of parts) {
+                    const result = await apiCall('mkdir', { path: pathSoFar, name: part });
+                    // Ignore error if directory already exists
+                    pathSoFar = pathSoFar ? `${pathSoFar}/${part}` : part;
+                }
+            }
+
+            const formData = new FormData();
+            formData.append('path', destPath);
+
+            if (uploadHasRelativePaths) {
+                // Directory upload: send files with relative paths
+                const relativePaths = [];
+                for (const item of pendingUploadFiles) {
+                    formData.append('files', item.file);
+                    relativePaths.push(item.relativePath);
+                }
+                formData.append('relative_paths', JSON.stringify(relativePaths));
+            } else {
+                // Simple file upload
+                for (const file of pendingUploadFiles) {
+                    formData.append('files', file);
+                }
+            }
+
+            // Close modal and show progress overlay
+            closeModal('modal-upload');
+            const overlay = document.getElementById('upload-overlay');
+            const progressFill = document.getElementById('progress-bar-fill');
+            const progressText = document.getElementById('progress-text');
+            overlay.classList.add('active');
+            progressFill.style.width = '0%';
+            progressText.textContent = '0%';
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `${apiBase}upload/`);
+            xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressFill.style.width = percent + '%';
+                    progressText.textContent = `${percent}% (${formatFileSize(e.loaded)} / ${formatFileSize(e.total)})`;
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                overlay.classList.remove('active');
+                try {
+                    const result = JSON.parse(xhr.responseText);
+
+                    // Check for directory not found error
+                    if (xhr.status === 404) {
+                        // Show modal again with error
+                        showUploadModalWithError('Directory does not exist');
+                        return;
+                    }
+
+                    const successMsg = result.uploaded && result.uploaded.length > 0
+                        ? `${result.uploaded.length} file(s) uploaded`
+                        : null;
+                    const errors = result.errors || [];
+                    const title = errors.length > 0 ? 'Upload Result' : 'Uploaded';
+                    showResult(title, successMsg, errors, 'file');
+                    pendingUploadFiles = null;
+                } catch {
+                    showToast('Upload failed', 'error');
+                    pendingUploadFiles = null;
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                overlay.classList.remove('active');
+                showToast('Upload failed', 'error');
+                pendingUploadFiles = null;
+            });
+
+            xhr.send(formData);
+        }
+
+        function showUploadModalWithError(errorMsg) {
+            // pendingUploadFiles and uploadHasRelativePaths are already set
+            // Just rebuild the file list and show error
+
+            const fileListEl = document.getElementById('upload-file-list');
+            if (uploadHasRelativePaths) {
+                fileListEl.innerHTML = pendingUploadFiles.map(item => `
+                    <div class="upload-file-item">
+                        <span class="upload-file-name">${item.relativePath}</span>
+                        <span class="upload-file-size">${formatFileSize(item.file.size)}</span>
+                    </div>
+                `).join('');
+            } else {
+                fileListEl.innerHTML = pendingUploadFiles.map(f => `
+                    <div class="upload-file-item">
+                        <span class="upload-file-name">${f.name}</span>
+                        <span class="upload-file-size">${formatFileSize(f.size)}</span>
+                    </div>
+                `).join('');
+            }
+
+            // Show error message
+            const errorEl = document.getElementById('upload-error');
+            errorEl.textContent = errorMsg;
+            errorEl.classList.add('active');
+
+            showModal('modal-upload');
+        }
+
+        // File input change handler
+        document.getElementById('file-input')?.addEventListener('change', (e) => {
+            showUploadModal(e.target.files);
+            e.target.value = '';
+        });
+
+        // Recursively read directory entries
+        async function readDirectoryEntries(dirEntry, basePath = '') {
+            const files = [];
+            const reader = dirEntry.createReader();
+
+            const readEntries = () => new Promise((resolve, reject) => {
+                reader.readEntries(resolve, reject);
+            });
+
+            // readEntries may not return all entries at once, need to call repeatedly
+            let entries;
+            do {
+                entries = await readEntries();
+                for (const entry of entries) {
+                    const entryPath = basePath ? `${basePath}/${entry.name}` : entry.name;
+                    if (entry.isFile) {
+                        const file = await new Promise((resolve, reject) => {
+                            entry.file(resolve, reject);
+                        });
+                        // Attach relative path to the file object
+                        files.push({ file, relativePath: entryPath });
+                    } else if (entry.isDirectory) {
+                        const subFiles = await readDirectoryEntries(entry, entryPath);
+                        files.push(...subFiles);
+                    }
+                }
+            } while (entries.length > 0);
+
+            return files;
+        }
+
+        // Process dropped items (files and directories)
+        async function processDroppedItems(dataTransfer) {
+            const items = dataTransfer.items;
+            const filesWithPaths = [];
+
+            const promises = [];
+            for (const item of items) {
+                if (item.kind === 'file') {
+                    const entry = item.webkitGetAsEntry?.();
+                    if (entry) {
+                        if (entry.isDirectory) {
+                            promises.push(readDirectoryEntries(entry, entry.name));
+                        } else {
+                            promises.push(new Promise((resolve, reject) => {
+                                entry.file(file => {
+                                    resolve([{ file, relativePath: file.name }]);
+                                }, reject);
+                            }));
+                        }
+                    } else {
+                        // Fallback for browsers without webkitGetAsEntry
+                        const file = item.getAsFile();
+                        if (file) {
+                            filesWithPaths.push({ file, relativePath: file.name });
+                        }
+                    }
+                }
+            }
+
+            const results = await Promise.all(promises);
+            for (const result of results) {
+                filesWithPaths.push(...result);
+            }
+
+            return filesWithPaths;
+        }
+
+        // Drag & drop
+        const dropZone = document.getElementById('drop-zone');
+        if (dropZone && dropZone.classList.contains('drop-zone')) {
+            let dragCounter = 0;
+
+            dropZone.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dragCounter++;
+                dropZone.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter === 0) {
+                    dropZone.classList.remove('drag-over');
+                }
+            });
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+
+            dropZone.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                dropZone.classList.remove('drag-over');
+
+                // Check if any directories are being dropped
+                const items = e.dataTransfer.items;
+                let hasDirectory = false;
+                for (const item of items) {
+                    const entry = item.webkitGetAsEntry?.();
+                    if (entry?.isDirectory) {
+                        hasDirectory = true;
+                        break;
+                    }
+                }
+
+                if (hasDirectory) {
+                    // Process directories recursively
+                    const filesWithPaths = await processDroppedItems(e.dataTransfer);
+                    if (filesWithPaths.length > 0) {
+                        showUploadModalWithPaths(filesWithPaths);
+                    }
+                } else {
+                    // Simple file drop
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        showUploadModal(files);
+                    }
+                }
+            });
+        }
+
+        // Enter key for modals
+        document.getElementById('newfolder-name')?.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') createFolder();
+        });
+        document.getElementById('rename-name')?.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') renameItem();
+        });
+
+        // Escape key to close modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.active').forEach(modal => {
+                    if (modal.id === 'modal-upload') {
+                        closeUploadModal();
+                    } else {
+                        closeModal(modal.id);
+                    }
+                });
+            }
+        });
+
+        // Initialize clipboard buttons on page load
+        document.addEventListener('DOMContentLoaded', updateClipboardButtons);
+    </script>
+{% endblock %}
