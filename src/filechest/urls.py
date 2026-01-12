@@ -23,6 +23,7 @@ urlpatterns = [
 
     # API - Write operations
     path('api/<slug:volume_name>/mkdir/', views.api_mkdir, name='api_mkdir'),
+    path('api/<slug:volume_name>/mkdirs/', views.api_mkdirs, name='api_mkdirs'),
     path('api/<slug:volume_name>/delete/', views.api_delete, name='api_delete'),
     path('api/<slug:volume_name>/rename/', views.api_rename, name='api_rename'),
     path('api/<slug:volume_name>/upload/', views.api_upload, name='api_upload'),

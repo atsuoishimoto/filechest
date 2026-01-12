@@ -9,6 +9,7 @@ This settings module is used for quick, standalone usage with:
 
 from .settings import *
 from pathlib import Path
+import os
 
 
 SECRET_KEY = 'adhoc-insecure-key-not-for-production'
@@ -42,7 +43,6 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'django_filechest.urls_adhoc'
 
 # Temporary database (set by __main__.py)
-import os
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -52,4 +52,4 @@ DATABASES = {
 
 # Adhoc mode: all users get editor access without authentication
 FILECHEST_ADHOC_MODE = True
-DEBUG=False
+

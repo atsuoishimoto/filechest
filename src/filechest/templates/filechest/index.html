@@ -183,11 +183,17 @@
         const currentPath = "{{ subpath }}";
         const currentUser = "{{ user.username|default:'' }}";
         const apiBase = "{% url 'filechest:api_list' volume.name %}".replace(/list\/$/, '');
+        const storageKey = "filechest_clipboard_{{ session_storage_key }}";
 
         // CSRF token helper
         function getCsrfToken() {
             const cookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
             return cookie ? cookie.split('=')[1] : '';
+        }
+
+        // Path normalization (convert backslash to forward slash)
+        function normalizePath(path) {
+            return path.replace(/\\/g, '/');
         }
 
         // Volume selector
@@ -249,7 +255,7 @@
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.className = `toast ${type} active`;
-            setTimeout(() => toast.classList.remove('active'), 3000);
+            setTimeout(() => toast.classList.remove('active'), 5000);
         }
 
         function formatErrorMessage(error, path) {
@@ -375,7 +381,7 @@
 
         // Clipboard management for Mark/Copy/Move
         function getClipboard() {
-            const data = localStorage.getItem('filechest_clipboard');
+            const data = sessionStorage.getItem(storageKey);
             if (!data) return null;
 
             const clipboard = JSON.parse(data);
@@ -387,7 +393,7 @@
         }
 
         function setClipboard(items) {
-            localStorage.setItem('filechest_clipboard', JSON.stringify({
+            sessionStorage.setItem(storageKey, JSON.stringify({
                 volume: volumeName,
                 user: currentUser,
                 items: items
@@ -396,7 +402,7 @@
         }
 
         function clearClipboard() {
-            localStorage.removeItem('filechest_clipboard');
+            sessionStorage.removeItem(storageKey);
             updateClipboardButtons();
         }
 
@@ -588,7 +594,7 @@
         async function executeUpload() {
             if (!pendingUploadFiles || pendingUploadFiles.length === 0) return;
 
-            let destPath = document.getElementById('upload-dest').value.trim();
+            let destPath = normalizePath(document.getElementById('upload-dest').value.trim());
             // Normalize path: remove leading/trailing slashes, handle root
             if (destPath === '/' || destPath === '') {
                 destPath = '';
@@ -596,16 +602,16 @@
                 destPath = destPath.replace(/^\/+|\/+$/g, '');
             }
 
-            // If checkbox is checked, create the directory first
+            // If checkbox is checked, create the directories first
             const createDir = document.getElementById('upload-create-dir').checked;
             if (createDir && destPath) {
+                // Build all intermediate paths
                 const parts = destPath.split('/');
-                let pathSoFar = '';
-                for (const part of parts) {
-                    const result = await apiCall('mkdir', { path: pathSoFar, name: part });
-                    // Ignore error if directory already exists
-                    pathSoFar = pathSoFar ? `${pathSoFar}/${part}` : part;
+                const paths = [];
+                for (let i = 0; i < parts.length; i++) {
+                    paths.push(parts.slice(0, i + 1).join('/'));
                 }
+                await apiCall('mkdirs', { paths });
             }
 
             const formData = new FormData();
@@ -616,7 +622,7 @@
                 const relativePaths = [];
                 for (const item of pendingUploadFiles) {
                     formData.append('files', item.file);
-                    relativePaths.push(item.relativePath);
+                    relativePaths.push(normalizePath(item.relativePath));
                 }
                 formData.append('relative_paths', JSON.stringify(relativePaths));
             } else {

@@ -1,7 +1,11 @@
 import json
+import secrets
 from pathlib import Path
 
 from django.http import JsonResponse, HttpResponse, Http404, HttpResponseForbidden, FileResponse
+
+# Session key generated at server startup for sessionStorage namespacing
+SESSION_STORAGE_KEY = secrets.token_hex(8)
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.clickjacking import xframe_options_sameorigin
@@ -41,6 +45,11 @@ def validate_name(name: str) -> str | None:
     if name.startswith('.'):
         return "Name cannot start with a dot"
     return None
+
+
+def normalize_path(path: str) -> str:
+    """Normalize path separators (convert backslash to forward slash)."""
+    return path.replace('\\', '/')
 
 
 # =============================================================================
@@ -129,6 +138,7 @@ def index(request, volume_name: str, subpath: str = ''):
         'can_edit': role == Role.EDITOR,
         'available_volumes': available_volumes,
         'adhoc_mode': getattr(django_settings, 'FILECHEST_ADHOC_MODE', False),
+        'session_storage_key': SESSION_STORAGE_KEY,
     }
     try:
         ret = render(request, 'filechest/index.html', context)
@@ -362,7 +372,7 @@ def api_mkdir(request, volume_name: str):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-    path = data.get('path', '')
+    path = normalize_path(data.get('path', ''))
     name = data.get('name', '')
 
     # Validate name
@@ -391,6 +401,42 @@ def api_mkdir(request, volume_name: str):
 
 
 @require_POST
+def api_mkdirs(request, volume_name: str):
+    """API: Create multiple directories at once."""
+    volume, error = get_volume_and_check_edit(request, volume_name)
+    if error:
+        return error
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    paths = data.get('paths', [])
+    if not paths:
+        return JsonResponse({'error': 'No paths provided'}, status=400)
+
+    storage = get_storage(volume)
+    created = []
+    errors = []
+
+    for path in paths:
+        path = normalize_path(path).strip('/')
+        if not path:
+            continue
+        try:
+            storage.mkdir(path)
+            created.append(path)
+        except PathExistsError:
+            # Directory already exists, that's fine
+            created.append(path)
+        except (InvalidPathError, PathNotFoundError, PermissionDeniedError, StorageError) as e:
+            errors.append({'path': path, 'error': e.message})
+
+    return JsonResponse({'created': created, 'errors': errors})
+
+
+@require_POST
 def api_delete(request, volume_name: str):
     """API: Delete files/folders."""
     volume, error = get_volume_and_check_edit(request, volume_name)
@@ -402,7 +448,7 @@ def api_delete(request, volume_name: str):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-    items = data.get('items', [])
+    items = [normalize_path(item) for item in data.get('items', [])]
     if not items:
         return JsonResponse({'error': 'No items specified'}, status=400)
 
@@ -438,7 +484,7 @@ def api_rename(request, volume_name: str):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-    path = data.get('path', '')
+    path = normalize_path(data.get('path', ''))
     new_name = data.get('new_name', '')
 
     if not path:
@@ -473,7 +519,7 @@ def api_upload(request, volume_name: str):
     if error:
         return error
 
-    path = request.POST.get('path', '')
+    path = normalize_path(request.POST.get('path', ''))
 
     storage = get_storage(volume)
 
@@ -486,7 +532,7 @@ def api_upload(request, volume_name: str):
     relative_paths = None
     if relative_paths_json:
         try:
-            relative_paths = json.loads(relative_paths_json)
+            relative_paths = [normalize_path(p) for p in json.loads(relative_paths_json)]
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid relative_paths JSON'}, status=400)
 
@@ -554,8 +600,8 @@ def api_copy(request, volume_name: str):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-    items = data.get('items', [])
-    dest_path = data.get('destination', '')
+    items = [normalize_path(item) for item in data.get('items', [])]
+    dest_path = normalize_path(data.get('destination', ''))
 
     if not items:
         return JsonResponse({'error': 'No items specified'}, status=400)
@@ -597,8 +643,8 @@ def api_move(request, volume_name: str):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-    items = data.get('items', [])
-    dest_path = data.get('destination', '')
+    items = [normalize_path(item) for item in data.get('items', [])]
+    dest_path = normalize_path(data.get('destination', ''))
 
     if not items:
         return JsonResponse({'error': 'No items specified'}, status=400)
