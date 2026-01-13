@@ -6,15 +6,43 @@ register = template.Library()
 
 
 FILE_ICONS = {
-    'pdf': '📄', 'doc': '📝', 'docx': '📝',
-    'xls': '📊', 'xlsx': '📊',
-    'png': '🖼️', 'jpg': '🖼️', 'jpeg': '🖼️', 'gif': '🖼️', 'webp': '🖼️', 'svg': '🖼️',
-    'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'ogg': '🎵',
-    'mp4': '🎬', 'mkv': '🎬', 'avi': '🎬', 'mov': '🎬', 'webm': '🎬',
-    'zip': '📦', 'tar': '📦', 'gz': '📦', 'rar': '📦', '7z': '📦',
-    'py': '🐍', 'js': '📜', 'ts': '📜', 'html': '🌐', 'css': '🎨',
-    'json': '📋', 'xml': '📋', 'yaml': '📋', 'yml': '📋',
-    'md': '📝', 'txt': '📝', 'rst': '📝',
+    "pdf": "📄",
+    "doc": "📝",
+    "docx": "📝",
+    "xls": "📊",
+    "xlsx": "📊",
+    "png": "🖼️",
+    "jpg": "🖼️",
+    "jpeg": "🖼️",
+    "gif": "🖼️",
+    "webp": "🖼️",
+    "svg": "🖼️",
+    "mp3": "🎵",
+    "wav": "🎵",
+    "flac": "🎵",
+    "ogg": "🎵",
+    "mp4": "🎬",
+    "mkv": "🎬",
+    "avi": "🎬",
+    "mov": "🎬",
+    "webm": "🎬",
+    "zip": "📦",
+    "tar": "📦",
+    "gz": "📦",
+    "rar": "📦",
+    "7z": "📦",
+    "py": "🐍",
+    "js": "📜",
+    "ts": "📜",
+    "html": "🌐",
+    "css": "🎨",
+    "json": "📋",
+    "xml": "📋",
+    "yaml": "📋",
+    "yml": "📋",
+    "md": "📝",
+    "txt": "📝",
+    "rst": "📝",
 }
 
 
@@ -22,18 +50,18 @@ FILE_ICONS = {
 def file_icon(filename: str, is_dir: bool) -> str:
     """Return an emoji icon based on file type."""
     if is_dir:
-        return '📁'
-    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-    return FILE_ICONS.get(ext, '📄')
+        return "📁"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    return FILE_ICONS.get(ext, "📄")
 
 
 @register.filter
 def timestamp_to_date(timestamp: float) -> str:
     """Convert Unix timestamp to formatted date string."""
     if not timestamp:
-        return ''
+        return ""
     dt = datetime.fromtimestamp(timestamp).astimezone()
-    return dt.strftime('%Y-%m-%d %H:%M:%S')
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
 @register.filter

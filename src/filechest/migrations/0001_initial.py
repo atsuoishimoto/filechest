@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -15,33 +14,93 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Volume',
+            name="Volume",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.SlugField(help_text='Unique identifier (alphanumeric and hyphens only)', max_length=100, unique=True)),
-                ('verbose_name', models.CharField(help_text='Display name', max_length=200)),
-                ('path', models.CharField(help_text='Absolute path on the filesystem', max_length=500, unique=True)),
-                ('public_read', models.BooleanField(default=False, help_text='Allow public read access (no login required)')),
-                ('is_active', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.SlugField(
+                        help_text="Unique identifier (alphanumeric and hyphens only)",
+                        max_length=100,
+                        unique=True,
+                    ),
+                ),
+                (
+                    "verbose_name",
+                    models.CharField(help_text="Display name", max_length=200),
+                ),
+                (
+                    "path",
+                    models.CharField(
+                        help_text="Absolute path on the filesystem",
+                        max_length=500,
+                        unique=True,
+                    ),
+                ),
+                (
+                    "public_read",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Allow public read access (no login required)",
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'verbose_name': 'Volume',
-                'verbose_name_plural': 'Volumes',
+                "verbose_name": "Volume",
+                "verbose_name_plural": "Volumes",
             },
         ),
         migrations.CreateModel(
-            name='VolumePermission',
+            name="VolumePermission",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('role', models.CharField(choices=[('viewer', 'Viewer'), ('editor', 'Editor')], default='viewer', max_length=20)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='volume_permissions', to=settings.AUTH_USER_MODEL)),
-                ('volume', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='permissions', to='filechest.volume')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "role",
+                    models.CharField(
+                        choices=[("viewer", "Viewer"), ("editor", "Editor")],
+                        default="viewer",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="volume_permissions",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "volume",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="permissions",
+                        to="filechest.volume",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Volume Permission',
-                'verbose_name_plural': 'Volume Permissions',
-                'unique_together': {('user', 'volume')},
+                "verbose_name": "Volume Permission",
+                "verbose_name_plural": "Volume Permissions",
+                "unique_together": {("user", "volume")},
             },
         ),
     ]

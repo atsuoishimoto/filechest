@@ -11,7 +11,7 @@ def get_user_role(user, volume: Volume) -> str | None:
         'viewer', 'editor', or None (no access)
     """
     # Adhoc mode: everyone gets editor access
-    if getattr(settings, 'FILECHEST_ADHOC_MODE', False):
+    if getattr(settings, "FILECHEST_ADHOC_MODE", False):
         return Role.EDITOR
 
     # superuser always has editor access

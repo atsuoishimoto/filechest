@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('filechest', '0001_initial'),
+        ("filechest", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='volume',
-            name='max_file_size',
-            field=models.PositiveBigIntegerField(default=10485760, help_text='Maximum file size for uploads in bytes'),
+            model_name="volume",
+            name="max_file_size",
+            field=models.PositiveBigIntegerField(
+                default=10485760, help_text="Maximum file size for uploads in bytes"
+            ),
         ),
     ]

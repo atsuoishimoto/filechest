@@ -15,6 +15,7 @@ import shutil
 @dataclass
 class FileInfo:
     """Information about a file or directory."""
+
     name: str
     is_dir: bool
     size: int | None  # None for directories
@@ -24,7 +25,7 @@ class FileInfo:
 class StorageError(Exception):
     """Base exception for storage operations."""
 
-    def __init__(self, message: str, path: str = ''):
+    def __init__(self, message: str, path: str = ""):
         super().__init__(message)
         self.path = path
         self.message = message
@@ -37,31 +38,37 @@ class StorageError(Exception):
 
 class PathNotFoundError(StorageError):
     """Raised when a path does not exist."""
+
     pass
 
 
 class PathExistsError(StorageError):
     """Raised when a path already exists."""
+
     pass
 
 
 class PermissionDeniedError(StorageError):
     """Raised when permission is denied."""
+
     pass
 
 
 class InvalidPathError(StorageError):
     """Raised when a path is invalid (e.g., path traversal attempt)."""
+
     pass
 
 
 class NotADirectoryError(StorageError):
     """Raised when a directory operation is attempted on a file."""
+
     pass
 
 
 class NotAFileError(StorageError):
     """Raised when a file operation is attempted on a directory."""
+
     pass
 
 
@@ -282,12 +289,14 @@ class LocalStorage(BaseStorage):
         try:
             for entry in target.iterdir():
                 stat = entry.stat()
-                items.append(FileInfo(
-                    name=entry.name,
-                    is_dir=entry.is_dir(),
-                    size=stat.st_size if entry.is_file() else None,
-                    modified=stat.st_mtime,
-                ))
+                items.append(
+                    FileInfo(
+                        name=entry.name,
+                        is_dir=entry.is_dir(),
+                        size=stat.st_size if entry.is_file() else None,
+                        modified=stat.st_mtime,
+                    )
+                )
         except PermissionError:
             raise PermissionDeniedError("Permission denied", path)
 
@@ -335,7 +344,7 @@ class LocalStorage(BaseStorage):
             raise NotAFileError("Not a file", path)
 
         try:
-            return open(target, 'rb')
+            return open(target, "rb")
         except PermissionError:
             raise PermissionDeniedError("Permission denied", path)
 
@@ -349,7 +358,7 @@ class LocalStorage(BaseStorage):
             raise PermissionDeniedError("Permission denied creating directory", path)
 
         try:
-            with open(target, 'wb') as f:
+            with open(target, "wb") as f:
                 for chunk in content:
                     f.write(chunk)
         except PermissionError:
@@ -474,7 +483,7 @@ class S3Storage(BaseStorage):
     Empty directories are not supported.
     """
 
-    def __init__(self, bucket: str, prefix: str = '', s3_client=None):
+    def __init__(self, bucket: str, prefix: str = "", s3_client=None):
         """
         Initialize S3 storage.
 
@@ -486,46 +495,48 @@ class S3Storage(BaseStorage):
         import boto3
 
         self.bucket = bucket
-        self.prefix = prefix.strip('/') if prefix else ''
-        self.s3 = s3_client or boto3.client('s3')
+        self.prefix = prefix.strip("/") if prefix else ""
+        self.s3 = s3_client or boto3.client("s3")
 
     def _full_key(self, path: str) -> str:
         """Get full S3 key from relative path."""
-        path = path.strip('/')
+        path = path.strip("/")
         if self.prefix:
             return f"{self.prefix}/{path}" if path else self.prefix
         return path
 
     def _validate_path(self, path: str) -> None:
         """Validate path doesn't contain traversal attempts."""
-        if '..' in path.split('/'):
+        if ".." in path.split("/"):
             raise InvalidPathError("Invalid path", path)
 
-    def _list_objects(self, prefix: str, delimiter: str = '/') -> tuple[list, list]:
+    def _list_objects(self, prefix: str, delimiter: str = "/") -> tuple[list, list]:
         """
         List objects with given prefix.
         Returns (files, directories) as lists of keys.
         """
         full_prefix = prefix
-        if full_prefix and not full_prefix.endswith('/'):
-            full_prefix += '/'
+        if full_prefix and not full_prefix.endswith("/"):
+            full_prefix += "/"
 
-        paginator = self.s3.get_paginator('list_objects_v2')
+        paginator = self.s3.get_paginator("list_objects_v2")
         files = []
         dirs = []
 
-        for page in paginator.paginate(Bucket=self.bucket, Prefix=full_prefix, Delimiter=delimiter):
+        for page in paginator.paginate(
+            Bucket=self.bucket, Prefix=full_prefix, Delimiter=delimiter
+        ):
             # Files (objects)
-            for obj in page.get('Contents', []):
-                key = obj['Key']
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
                 # Skip the prefix itself
                 if key == full_prefix:
                     continue
                 files.append(obj)
 
             # Directories (common prefixes)
-            for prefix_info in page.get('CommonPrefixes', []):
-                dirs.append(prefix_info['Prefix'].rstrip('/'))
+            for prefix_info in page.get("CommonPrefixes", []):
+                dirs.append(prefix_info["Prefix"].rstrip("/"))
 
         return files, dirs
 
@@ -535,7 +546,7 @@ class S3Storage(BaseStorage):
             self.s3.head_object(Bucket=self.bucket, Key=key)
             return True
         except self.s3.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == '404':
+            if e.response["Error"]["Code"] == "404":
                 return False
             raise
 
@@ -545,15 +556,11 @@ class S3Storage(BaseStorage):
             return True  # Root always exists
 
         key = self._full_key(path)
-        prefix = key + '/' if not key.endswith('/') else key
+        prefix = key + "/" if not key.endswith("/") else key
 
         # Check if any objects exist with this prefix
-        response = self.s3.list_objects_v2(
-            Bucket=self.bucket,
-            Prefix=prefix,
-            MaxKeys=1
-        )
-        return response.get('KeyCount', 0) > 0
+        response = self.s3.list_objects_v2(Bucket=self.bucket, Prefix=prefix, MaxKeys=1)
+        return response.get("KeyCount", 0) > 0
 
     def list_dir(self, path: str) -> list[FileInfo]:
         self._validate_path(path)
@@ -570,29 +577,33 @@ class S3Storage(BaseStorage):
 
         # Add directories
         for dir_key in dirs:
-            name = dir_key.split('/')[-1]
+            name = dir_key.split("/")[-1]
             if name:
-                items.append(FileInfo(
-                    name=name,
-                    is_dir=True,
-                    size=None,
-                    modified=0,  # S3 doesn't have directory timestamps
-                ))
+                items.append(
+                    FileInfo(
+                        name=name,
+                        is_dir=True,
+                        size=None,
+                        modified=0,  # S3 doesn't have directory timestamps
+                    )
+                )
 
         # Add files
-        prefix_to_strip = full_prefix + '/' if full_prefix else ''
+        prefix_to_strip = full_prefix + "/" if full_prefix else ""
         for obj in files:
-            key = obj['Key']
-            name = key[len(prefix_to_strip):] if prefix_to_strip else key
+            key = obj["Key"]
+            name = key[len(prefix_to_strip) :] if prefix_to_strip else key
             # Skip nested files (should be handled by delimiter)
-            if '/' in name:
+            if "/" in name:
                 continue
-            items.append(FileInfo(
-                name=name,
-                is_dir=False,
-                size=obj['Size'],
-                modified=obj['LastModified'].timestamp(),
-            ))
+            items.append(
+                FileInfo(
+                    name=name,
+                    is_dir=False,
+                    size=obj["Size"],
+                    modified=obj["LastModified"].timestamp(),
+                )
+            )
 
         return items
 
@@ -603,7 +614,7 @@ class S3Storage(BaseStorage):
             raise PathNotFoundError("Cannot get info for root", "")
 
         key = self._full_key(path)
-        name = path.split('/')[-1]
+        name = path.split("/")[-1]
 
         # Check if it's a file
         try:
@@ -611,11 +622,11 @@ class S3Storage(BaseStorage):
             return FileInfo(
                 name=name,
                 is_dir=False,
-                size=response['ContentLength'],
-                modified=response['LastModified'].timestamp(),
+                size=response["ContentLength"],
+                modified=response["LastModified"].timestamp(),
             )
         except self.s3.exceptions.ClientError as e:
-            if e.response['Error']['Code'] != '404':
+            if e.response["Error"]["Code"] != "404":
                 raise
 
         # Check if it's a directory
@@ -683,9 +694,9 @@ class S3Storage(BaseStorage):
 
         try:
             response = self.s3.get_object(Bucket=self.bucket, Key=key)
-            return response['Body']
+            return response["Body"]
         except self.s3.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == 'NoSuchKey':
+            if e.response["Error"]["Code"] == "NoSuchKey":
                 raise PathNotFoundError("Path not found", path)
             raise
 
@@ -698,7 +709,7 @@ class S3Storage(BaseStorage):
         key = self._full_key(path)
 
         # Collect content into bytes
-        data = b''.join(content)
+        data = b"".join(content)
 
         self.s3.put_object(Bucket=self.bucket, Key=key, Body=data)
 
@@ -739,22 +750,19 @@ class S3Storage(BaseStorage):
             raise PathNotFoundError("Path not found", path)
 
         # Delete all objects with this prefix
-        prefix = key + '/'
-        paginator = self.s3.get_paginator('list_objects_v2')
+        prefix = key + "/"
+        paginator = self.s3.get_paginator("list_objects_v2")
         objects_to_delete = []
 
         for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
-            for obj in page.get('Contents', []):
-                objects_to_delete.append({'Key': obj['Key']})
+            for obj in page.get("Contents", []):
+                objects_to_delete.append({"Key": obj["Key"]})
 
         if objects_to_delete:
             # Delete in batches of 1000 (S3 limit)
             for i in range(0, len(objects_to_delete), 1000):
-                batch = objects_to_delete[i:i + 1000]
-                self.s3.delete_objects(
-                    Bucket=self.bucket,
-                    Delete={'Objects': batch}
-                )
+                batch = objects_to_delete[i : i + 1000]
+                self.s3.delete_objects(Bucket=self.bucket, Delete={"Objects": batch})
 
     def rename(self, path: str, new_name: str) -> None:
         self._validate_path(path)
@@ -762,13 +770,13 @@ class S3Storage(BaseStorage):
         if not path:
             raise InvalidPathError("Cannot rename root", "")
 
-        if '/' in new_name:
+        if "/" in new_name:
             raise InvalidPathError("New name cannot contain slashes", new_name)
 
         # Build new path
-        parts = path.split('/')
+        parts = path.split("/")
         parts[-1] = new_name
-        new_path = '/'.join(parts)
+        new_path = "/".join(parts)
 
         if self.exists(new_path):
             raise PathExistsError("Destination already exists", new_name)
@@ -781,8 +789,8 @@ class S3Storage(BaseStorage):
             # Copy then delete
             self.s3.copy_object(
                 Bucket=self.bucket,
-                CopySource={'Bucket': self.bucket, 'Key': old_key},
-                Key=new_key
+                CopySource={"Bucket": self.bucket, "Key": old_key},
+                Key=new_key,
             )
             self.s3.delete_object(Bucket=self.bucket, Key=old_key)
             return
@@ -792,19 +800,19 @@ class S3Storage(BaseStorage):
             raise PathNotFoundError("Path not found", path)
 
         # Rename directory: copy all objects with new prefix, then delete old
-        old_prefix = old_key + '/'
-        new_prefix = new_key + '/'
+        old_prefix = old_key + "/"
+        new_prefix = new_key + "/"
 
-        paginator = self.s3.get_paginator('list_objects_v2')
+        paginator = self.s3.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self.bucket, Prefix=old_prefix):
-            for obj in page.get('Contents', []):
-                old_obj_key = obj['Key']
-                new_obj_key = new_prefix + old_obj_key[len(old_prefix):]
+            for obj in page.get("Contents", []):
+                old_obj_key = obj["Key"]
+                new_obj_key = new_prefix + old_obj_key[len(old_prefix) :]
 
                 self.s3.copy_object(
                     Bucket=self.bucket,
-                    CopySource={'Bucket': self.bucket, 'Key': old_obj_key},
-                    Key=new_obj_key
+                    CopySource={"Bucket": self.bucket, "Key": old_obj_key},
+                    Key=new_obj_key,
                 )
                 self.s3.delete_object(Bucket=self.bucket, Key=old_obj_key)
 
@@ -816,13 +824,13 @@ class S3Storage(BaseStorage):
             raise InvalidPathError("Cannot copy root", "")
 
         src_key = self._full_key(src_path)
-        src_name = src_path.split('/')[-1]
+        src_name = src_path.split("/")[-1]
 
         # Check destination is not a file (directories are implicit in S3)
         if self.is_file(dest_dir):
             raise NotADirectoryError("Destination is not a directory", dest_dir)
 
-        dest_path = f"{dest_dir}/{src_name}".strip('/')
+        dest_path = f"{dest_dir}/{src_name}".strip("/")
         dest_key = self._full_key(dest_path)
 
         if self.exists(dest_path):
@@ -832,8 +840,8 @@ class S3Storage(BaseStorage):
         if self._object_exists(src_key):
             self.s3.copy_object(
                 Bucket=self.bucket,
-                CopySource={'Bucket': self.bucket, 'Key': src_key},
-                Key=dest_key
+                CopySource={"Bucket": self.bucket, "Key": src_key},
+                Key=dest_key,
             )
             return
 
@@ -841,19 +849,19 @@ class S3Storage(BaseStorage):
         if not self._dir_exists(src_path):
             raise PathNotFoundError("Source not found", src_path)
 
-        src_prefix = src_key + '/'
-        dest_prefix = dest_key + '/'
+        src_prefix = src_key + "/"
+        dest_prefix = dest_key + "/"
 
-        paginator = self.s3.get_paginator('list_objects_v2')
+        paginator = self.s3.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self.bucket, Prefix=src_prefix):
-            for obj in page.get('Contents', []):
-                old_obj_key = obj['Key']
-                new_obj_key = dest_prefix + old_obj_key[len(src_prefix):]
+            for obj in page.get("Contents", []):
+                old_obj_key = obj["Key"]
+                new_obj_key = dest_prefix + old_obj_key[len(src_prefix) :]
 
                 self.s3.copy_object(
                     Bucket=self.bucket,
-                    CopySource={'Bucket': self.bucket, 'Key': old_obj_key},
-                    Key=new_obj_key
+                    CopySource={"Bucket": self.bucket, "Key": old_obj_key},
+                    Key=new_obj_key,
                 )
 
     def move(self, src_path: str, dest_dir: str) -> None:
@@ -864,11 +872,11 @@ class S3Storage(BaseStorage):
             raise InvalidPathError("Cannot move root", "")
 
         # Check for moving into itself
-        if dest_dir.startswith(src_path + '/'):
+        if dest_dir.startswith(src_path + "/"):
             raise InvalidPathError("Cannot move folder into itself", src_path)
 
-        src_name = src_path.split('/')[-1]
-        dest_path = f"{dest_dir}/{src_name}".strip('/')
+        src_name = src_path.split("/")[-1]
+        dest_path = f"{dest_dir}/{src_name}".strip("/")
 
         # Check destination is not a file (directories are implicit in S3)
         if self.is_file(dest_dir):
@@ -892,13 +900,13 @@ def parse_s3_path(path: str) -> tuple[str, str]:
     Returns:
         Tuple of (bucket, prefix)
     """
-    if not path.startswith('s3://'):
+    if not path.startswith("s3://"):
         raise ValueError(f"Invalid S3 path: {path}")
 
     path = path[5:]  # Remove "s3://"
-    parts = path.split('/', 1)
+    parts = path.split("/", 1)
     bucket = parts[0]
-    prefix = parts[1] if len(parts) > 1 else ''
+    prefix = parts[1] if len(parts) > 1 else ""
     return bucket, prefix
 
 
@@ -915,10 +923,10 @@ def list_s3_buckets(s3_client=None) -> list[str]:
     import boto3
 
     if s3_client is None:
-        s3_client = boto3.client('s3')
+        s3_client = boto3.client("s3")
 
     response = s3_client.list_buckets()
-    return [bucket['Name'] for bucket in response.get('Buckets', [])]
+    return [bucket["Name"] for bucket in response.get("Buckets", [])]
 
 
 def get_storage(volume) -> BaseStorage:
@@ -931,7 +939,7 @@ def get_storage(volume) -> BaseStorage:
     Returns:
         Storage backend instance
     """
-    if volume.path.startswith('s3://'):
+    if volume.path.startswith("s3://"):
         bucket, prefix = parse_s3_path(volume.path)
         return S3Storage(bucket, prefix)
     else:
