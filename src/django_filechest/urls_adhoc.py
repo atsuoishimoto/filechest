@@ -5,9 +5,7 @@ Does not include admin or authentication URLs.
 """
 
 from django.urls import path, include
-from django.conf.urls.static import static
-from django.conf import settings
 
 urlpatterns = [
-    path('', include('filechest.urls')),
+    path("", include("filechest.urls")),
 ]

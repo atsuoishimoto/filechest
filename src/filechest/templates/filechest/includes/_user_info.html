@@ -1,3 +1,4 @@
+<a href="{% url 'filechest:home' %}" class="btn-home" title="Home">🏠</a>
 {% if adhoc_mode %}
     {% if role %}<span class="role-badge role-{{ role }}">({{ role }})</span>{% endif %}
 {% elif user.is_authenticated %}
