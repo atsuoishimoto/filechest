@@ -168,6 +168,19 @@ body {
     background: #ddd;
 }
 
+.user-info .btn-home {
+    background: transparent;
+    font-size: 18px;
+    padding: 4px 8px;
+    text-decoration: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.user-info .btn-home:hover {
+    opacity: 1;
+}
+
 /* -----------------------------------------------------------------------------
    Breadcrumb
    ----------------------------------------------------------------------------- */
