@@ -42,7 +42,9 @@
                 <input type="file" id="file-input" multiple>
                 📤 Upload
             </label>
+            {% if not volume.is_s3 %}
             <button onclick="showNewFolderModal()">📁 New Folder</button>
+            {% endif %}
             <span class="spacer"></span>
             <button id="btn-rename" onclick="showRenameModal()" disabled>✏️ Rename</button>
             <button id="btn-mark" onclick="markItems()" disabled>📌 Mark</button>
@@ -184,6 +186,7 @@
         const currentUser = "{{ user.username|default:'' }}";
         const apiBase = "{% url 'filechest:api_list' volume.name %}".replace(/list\/$/, '');
         const storageKey = "filechest_clipboard_{{ session_storage_key }}";
+        const isS3Volume = {{ volume.is_s3|yesno:"true,false" }};
 
         // CSRF token helper
         function getCsrfToken() {
@@ -226,9 +229,21 @@
             const hasSelection = selected.length > 0;
             const singleSelection = selected.length === 1;
 
-            document.getElementById('btn-delete').disabled = !hasSelection;
+            // Check if any selected item is a directory
+            let hasSelectedDir = false;
+            document.querySelectorAll('.file-item').forEach(item => {
+                const checkbox = item.querySelector('.file-checkbox');
+                if (checkbox && checkbox.checked && item.dataset.isDir === 'true') {
+                    hasSelectedDir = true;
+                }
+            });
+
+            // On S3, disable Delete and Rename when folders are selected
+            const s3FolderSelected = isS3Volume && hasSelectedDir;
+
+            document.getElementById('btn-delete').disabled = !hasSelection || s3FolderSelected;
             document.getElementById('btn-mark').disabled = !hasSelection;
-            document.getElementById('btn-rename').disabled = !singleSelection;
+            document.getElementById('btn-rename').disabled = !singleSelection || s3FolderSelected;
 
             document.querySelectorAll('.file-item').forEach(item => {
                 const checkbox = item.querySelector('.file-checkbox');
