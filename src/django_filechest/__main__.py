@@ -22,7 +22,7 @@ from pathlib import Path
 
 def is_s3_bucket_list_mode(path: str) -> bool:
     """Check if the path requests S3 bucket listing mode."""
-    return path in ("s3://", "s3:", "s3")
+    return path in ("s3://", "s3:")
 
 
 def sanitize_bucket_name(bucket_name: str) -> str:

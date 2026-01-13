@@ -23,7 +23,13 @@ Or for an S3 bucket:
 uvx filechest s3://bucket-name/prefix
 ```
 
-This starts a web server and opens your browser automatically.
+To browse all accessible S3 buckets:
+
+```bash
+uvx filechest s3://
+```
+
+This starts a web server and opens your browser automatically. When using `s3://`, all buckets visible to your AWS credentials are listed on the home page.
 
 ### Features
 
