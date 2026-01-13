@@ -73,9 +73,10 @@ def main():
 
     # Validate path and create volumes
     path = args.path
-    if is_s3_bucket_list_mode(path):
-        # S3 bucket listing mode - create a volume for each bucket
-        from filechest.storage import list_s3_buckets
+    if is_s3_bucket_list_mode(path) or path.startswith('s3://'):
+        # S3 mode - create volumes for all accessible buckets
+        from filechest.storage import list_s3_buckets, parse_s3_path
+
         try:
             buckets = list_s3_buckets()
         except Exception as e:
@@ -86,6 +87,7 @@ def main():
             print("No S3 buckets found", file=sys.stderr)
             sys.exit(1)
 
+        # Create a volume for each bucket
         for bucket_name in buckets:
             Volume.objects.create(
                 name=sanitize_bucket_name(bucket_name),
@@ -95,22 +97,25 @@ def main():
                 public_read=True,
             )
 
-        url = f'http://127.0.0.1:{args.port}/'
-        display_path = 'S3 (all buckets)'
+        # Determine which page to open
+        if is_s3_bucket_list_mode(path):
+            # Open home page showing all buckets
+            url = f'http://127.0.0.1:{args.port}/'
+            display_path = 'S3 (all buckets)'
+        else:
+            # Open the specified bucket (with optional prefix as subpath)
+            target_bucket, prefix = parse_s3_path(path)
+            volume_name = sanitize_bucket_name(target_bucket)
 
-    elif path.startswith('s3://'):
-        # Single S3 bucket/prefix
-        volume_name = 's3'
-        verbose_name = path
-        Volume.objects.create(
-            name=volume_name,
-            verbose_name=verbose_name,
-            path=path,
-            is_active=True,
-            public_read=True,
-        )
-        url = f'http://127.0.0.1:{args.port}/{volume_name}/'
-        display_path = path
+            if target_bucket not in buckets:
+                print(f"Error: Bucket '{target_bucket}' not found or not accessible", file=sys.stderr)
+                sys.exit(1)
+
+            if prefix:
+                url = f'http://127.0.0.1:{args.port}/{volume_name}/browse/{prefix}/'
+            else:
+                url = f'http://127.0.0.1:{args.port}/{volume_name}/'
+            display_path = path
 
     else:
         # Local path - resolve and validate
