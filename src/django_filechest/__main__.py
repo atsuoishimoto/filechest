@@ -18,6 +18,8 @@ import threading
 import time
 import webbrowser
 from pathlib import Path
+from django.utils.text import slugify
+from hashlib import sha256
 
 
 def is_s3_bucket_list_mode(path: str) -> bool:
@@ -27,7 +29,7 @@ def is_s3_bucket_list_mode(path: str) -> bool:
 
 def sanitize_bucket_name(bucket_name: str) -> str:
     """Convert bucket name to a valid Django slug (replace dots with dashes)."""
-    return bucket_name.replace(".", "-")
+    return slugify(bucket_name) + "_" + sha256(bucket_name.encode()).hexdigest()[:8]
 
 
 def main():
