@@ -25,6 +25,11 @@ def is_s3_bucket_list_mode(path: str) -> bool:
     return path in ('s3://', 's3:', 's3')
 
 
+def sanitize_bucket_name(bucket_name: str) -> str:
+    """Convert bucket name to a valid Django slug (replace dots with dashes)."""
+    return bucket_name.replace('.', '-')
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Start a file manager for a directory or S3 bucket',
@@ -83,7 +88,7 @@ def main():
 
         for bucket_name in buckets:
             Volume.objects.create(
-                name=bucket_name,
+                name=sanitize_bucket_name(bucket_name),
                 verbose_name=bucket_name,
                 path=f's3://{bucket_name}',
                 is_active=True,

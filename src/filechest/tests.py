@@ -1071,7 +1071,7 @@ class TestListS3Buckets:
 # Adhoc Mode Tests
 # =============================================================================
 
-from django_filechest.__main__ import is_s3_bucket_list_mode
+from django_filechest.__main__ import is_s3_bucket_list_mode, sanitize_bucket_name
 
 
 class TestAdhocMode:
@@ -1085,3 +1085,10 @@ class TestAdhocMode:
         assert is_s3_bucket_list_mode('s3://bucket') is False
         assert is_s3_bucket_list_mode('s3://bucket/prefix') is False
         assert is_s3_bucket_list_mode('/local/path') is False
+
+    def test_sanitize_bucket_name(self):
+        """Test bucket name sanitization for Django slug compatibility."""
+        assert sanitize_bucket_name('my-bucket') == 'my-bucket'
+        assert sanitize_bucket_name('my.bucket.name') == 'my-bucket-name'
+        assert sanitize_bucket_name('notemata.app') == 'notemata-app'
+        assert sanitize_bucket_name('simple') == 'simple'
