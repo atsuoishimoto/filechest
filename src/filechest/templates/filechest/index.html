@@ -317,7 +317,7 @@
             const name = document.getElementById('newfolder-name').value.trim();
             if (!name) return;
 
-            const result = await apiCall('mkdir', { path: currentPath, name });
+            const result = await apiCall('mkdir', { path: currentPath, name, exists_ok: true });
             closeModal('modal-newfolder');
 
             if (result.success) {
@@ -602,16 +602,14 @@
                 destPath = destPath.replace(/^\/+|\/+$/g, '');
             }
 
-            // If checkbox is checked, create the directories first
+            // If checkbox is checked, create the directory (including parents)
             const createDir = document.getElementById('upload-create-dir').checked;
             if (createDir && destPath) {
-                // Build all intermediate paths
+                // Get the last part as the name, and the rest as path
                 const parts = destPath.split('/');
-                const paths = [];
-                for (let i = 0; i < parts.length; i++) {
-                    paths.push(parts.slice(0, i + 1).join('/'));
-                }
-                await apiCall('mkdirs', { paths });
+                const name = parts.pop();
+                const path = parts.join('/');
+                await apiCall('mkdir', { path, name, parents: true, exists_ok: true });
             }
 
             const formData = new FormData();

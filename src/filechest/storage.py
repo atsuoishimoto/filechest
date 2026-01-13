@@ -151,17 +151,18 @@ class BaseStorage(ABC):
         pass
 
     @abstractmethod
-    def mkdir(self, path: str, parents: bool = False) -> None:
+    def mkdir(self, path: str, parents: bool = False, exists_ok: bool = False) -> None:
         """
         Create a directory.
 
         Args:
             path: Path relative to storage root
             parents: If True, create parent directories as needed
+            exists_ok: If True, don't raise error if directory already exists
 
         Raises:
             PathNotFoundError: If parent doesn't exist and parents=False
-            PathExistsError: If path already exists
+            PathExistsError: If path already exists and exists_ok=False
             PermissionDeniedError: If permission is denied
         """
         pass
@@ -354,17 +355,16 @@ class LocalStorage(BaseStorage):
         except PermissionError:
             raise PermissionDeniedError("Permission denied", path)
 
-    def mkdir(self, path: str, parents: bool = False) -> None:
+    def mkdir(self, path: str, parents: bool = False, exists_ok: bool = False) -> None:
         target = self._resolve(path)
 
         if target.exists():
+            if exists_ok and target.is_dir():
+                return
             raise PathExistsError("Path already exists", path)
 
         try:
-            if parents:
-                target.mkdir(parents=True, exist_ok=False)
-            else:
-                target.mkdir()
+            target.mkdir(parents=parents, exist_ok=exists_ok)
         except FileNotFoundError:
             raise PathNotFoundError("Parent directory not found", path)
         except PermissionError:
@@ -702,7 +702,7 @@ class S3Storage(BaseStorage):
 
         self.s3.put_object(Bucket=self.bucket, Key=key, Body=data)
 
-    def mkdir(self, path: str, parents: bool = False) -> None:
+    def mkdir(self, path: str, parents: bool = False, exists_ok: bool = False) -> None:
         """Create a directory (no-op for S3, directories are implicit)."""
         self._validate_path(path)
 
@@ -712,6 +712,10 @@ class S3Storage(BaseStorage):
         # Check if a file with this exact name exists
         key = self._full_key(path)
         if self._object_exists(key):
+            raise PathExistsError("Path already exists", path)
+
+        # Check if directory already exists (only if exists_ok is False)
+        if not exists_ok and self._dir_exists(path):
             raise PathExistsError("Path already exists", path)
 
         # For S3, directories are implicit - no action needed

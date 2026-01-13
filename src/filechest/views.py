@@ -374,6 +374,8 @@ def api_mkdir(request, volume_name: str):
 
     path = normalize_path(data.get('path', ''))
     name = data.get('name', '')
+    parents = data.get('parents', False)
+    exists_ok = data.get('exists_ok', False)
 
     # Validate name
     if err := validate_name(name):
@@ -385,7 +387,7 @@ def api_mkdir(request, volume_name: str):
     new_path = f"{path}/{name}".strip('/') if path else name
 
     try:
-        storage.mkdir(new_path)
+        storage.mkdir(new_path, parents=parents, exists_ok=exists_ok)
     except InvalidPathError as e:
         return JsonResponse({'error': e.message, 'path': e.path}, status=400)
     except PathNotFoundError as e:
@@ -398,42 +400,6 @@ def api_mkdir(request, volume_name: str):
         return JsonResponse({'error': e.message, 'path': e.path}, status=500)
 
     return JsonResponse({'success': True, 'name': name})
-
-
-@require_POST
-def api_mkdirs(request, volume_name: str):
-    """API: Create multiple directories at once."""
-    volume, error = get_volume_and_check_edit(request, volume_name)
-    if error:
-        return error
-
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
-    paths = data.get('paths', [])
-    if not paths:
-        return JsonResponse({'error': 'No paths provided'}, status=400)
-
-    storage = get_storage(volume)
-    created = []
-    errors = []
-
-    for path in paths:
-        path = normalize_path(path).strip('/')
-        if not path:
-            continue
-        try:
-            storage.mkdir(path)
-            created.append(path)
-        except PathExistsError:
-            # Directory already exists, that's fine
-            created.append(path)
-        except (InvalidPathError, PathNotFoundError, PermissionDeniedError, StorageError) as e:
-            errors.append({'path': path, 'error': e.message})
-
-    return JsonResponse({'created': created, 'errors': errors})
 
 
 @require_POST
