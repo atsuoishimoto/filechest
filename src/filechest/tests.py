@@ -1027,3 +1027,61 @@ class TestParseS3Path:
     def test_invalid_path(self):
         with pytest.raises(ValueError):
             parse_s3_path('/local/path')
+
+
+# =============================================================================
+# S3 Bucket Listing Tests
+# =============================================================================
+
+from filechest.storage import list_s3_buckets
+
+
+class TestListS3Buckets:
+    """Test list_s3_buckets function."""
+
+    def test_list_buckets_empty(self):
+        """List buckets when no buckets exist."""
+        with mock_aws():
+            s3_client = boto3.client('s3', region_name='us-east-1')
+            buckets = list_s3_buckets(s3_client=s3_client)
+            assert buckets == []
+
+    def test_list_buckets_single(self):
+        """List buckets with a single bucket."""
+        with mock_aws():
+            s3_client = boto3.client('s3', region_name='us-east-1')
+            s3_client.create_bucket(Bucket='my-bucket')
+
+            buckets = list_s3_buckets(s3_client=s3_client)
+            assert buckets == ['my-bucket']
+
+    def test_list_buckets_multiple(self):
+        """List buckets with multiple buckets."""
+        with mock_aws():
+            s3_client = boto3.client('s3', region_name='us-east-1')
+            s3_client.create_bucket(Bucket='bucket-a')
+            s3_client.create_bucket(Bucket='bucket-b')
+            s3_client.create_bucket(Bucket='bucket-c')
+
+            buckets = list_s3_buckets(s3_client=s3_client)
+            assert set(buckets) == {'bucket-a', 'bucket-b', 'bucket-c'}
+
+
+# =============================================================================
+# Adhoc Mode Tests
+# =============================================================================
+
+from django_filechest.__main__ import is_s3_bucket_list_mode
+
+
+class TestAdhocMode:
+    """Test adhoc mode helper functions."""
+
+    def test_is_s3_bucket_list_mode(self):
+        """Test S3 bucket list mode detection."""
+        assert is_s3_bucket_list_mode('s3://') is True
+        assert is_s3_bucket_list_mode('s3:') is True
+        assert is_s3_bucket_list_mode('s3') is True
+        assert is_s3_bucket_list_mode('s3://bucket') is False
+        assert is_s3_bucket_list_mode('s3://bucket/prefix') is False
+        assert is_s3_bucket_list_mode('/local/path') is False

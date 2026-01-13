@@ -902,6 +902,25 @@ def parse_s3_path(path: str) -> tuple[str, str]:
     return bucket, prefix
 
 
+def list_s3_buckets(s3_client=None) -> list[str]:
+    """
+    List all S3 buckets accessible to the current user.
+
+    Args:
+        s3_client: Optional boto3 S3 client (for testing)
+
+    Returns:
+        List of bucket names
+    """
+    import boto3
+
+    if s3_client is None:
+        s3_client = boto3.client('s3')
+
+    response = s3_client.list_buckets()
+    return [bucket['Name'] for bucket in response.get('Buckets', [])]
+
+
 def get_storage(volume) -> BaseStorage:
     """
     Get the appropriate storage backend for a volume.

@@ -5,6 +5,7 @@ Entry point for standalone django-filechest usage.
 Usage:
     uvx django-filechest /path/to/directory
     uvx django-filechest s3://bucket/prefix
+    uvx django-filechest s3://  # List all buckets
     python -m django_filechest /path/to/directory
 """
 
@@ -19,6 +20,11 @@ import webbrowser
 from pathlib import Path
 
 
+def is_s3_bucket_list_mode(path: str) -> bool:
+    """Check if the path requests S3 bucket listing mode."""
+    return path in ('s3://', 's3:', 's3')
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Start a file manager for a directory or S3 bucket',
@@ -26,7 +32,7 @@ def main():
     )
     parser.add_argument(
         'path',
-        help='Path to directory or S3 URL (s3://bucket/prefix)',
+        help='Path to directory, S3 URL (s3://bucket/prefix), or "s3://" to list all buckets',
     )
     parser.add_argument(
         '-p', '--port',
@@ -41,21 +47,6 @@ def main():
     )
 
     args = parser.parse_args()
-
-    # Validate path
-    path = args.path
-    if path.startswith('s3://'):
-        # S3 path - will be validated when accessed
-        volume_name = 's3'
-        verbose_name = path
-    else:
-        # Local path - resolve and validate
-        path = str(Path(path).resolve())
-        if not Path(path).is_dir():
-            print(f"Error: '{path}' is not a directory", file=sys.stderr)
-            sys.exit(1)
-        volume_name = 'local'
-        verbose_name = Path(path).name or path
 
     # Create temporary database file
     db_fd, db_path = tempfile.mkstemp(suffix='.sqlite3', prefix='filechest_')
@@ -73,17 +64,66 @@ def main():
     from django.core.management import call_command
     call_command('migrate', '--run-syncdb', verbosity=0)
 
-    # Create temporary volume
     from filechest.models import Volume
-    Volume.objects.create(
-        name=volume_name,
-        verbose_name=verbose_name,
-        path=path,
-        is_active=True,
-        public_read=True,
-    )
 
-    url = f'http://127.0.0.1:{args.port}/{volume_name}/'
+    # Validate path and create volumes
+    path = args.path
+    if is_s3_bucket_list_mode(path):
+        # S3 bucket listing mode - create a volume for each bucket
+        from filechest.storage import list_s3_buckets
+        try:
+            buckets = list_s3_buckets()
+        except Exception as e:
+            print(f"Error listing S3 buckets: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        if not buckets:
+            print("No S3 buckets found", file=sys.stderr)
+            sys.exit(1)
+
+        for bucket_name in buckets:
+            Volume.objects.create(
+                name=bucket_name,
+                verbose_name=bucket_name,
+                path=f's3://{bucket_name}',
+                is_active=True,
+                public_read=True,
+            )
+
+        url = f'http://127.0.0.1:{args.port}/'
+        display_path = 'S3 (all buckets)'
+
+    elif path.startswith('s3://'):
+        # Single S3 bucket/prefix
+        volume_name = 's3'
+        verbose_name = path
+        Volume.objects.create(
+            name=volume_name,
+            verbose_name=verbose_name,
+            path=path,
+            is_active=True,
+            public_read=True,
+        )
+        url = f'http://127.0.0.1:{args.port}/{volume_name}/'
+        display_path = path
+
+    else:
+        # Local path - resolve and validate
+        path = str(Path(path).resolve())
+        if not Path(path).is_dir():
+            print(f"Error: '{path}' is not a directory", file=sys.stderr)
+            sys.exit(1)
+        volume_name = 'local'
+        verbose_name = Path(path).name or path
+        Volume.objects.create(
+            name=volume_name,
+            verbose_name=verbose_name,
+            path=path,
+            is_active=True,
+            public_read=True,
+        )
+        url = f'http://127.0.0.1:{args.port}/{volume_name}/'
+        display_path = path
 
     # Open browser after a short delay
     if not args.no_browser:
@@ -92,7 +132,7 @@ def main():
             webbrowser.open(url)
         threading.Thread(target=open_browser, daemon=True).start()
 
-    print(f'\nStarting FileChest for: {path}')
+    print(f'\nStarting FileChest for: {display_path}')
     print(f'Open your browser at: {url}')
     print('Press Ctrl+C to stop\n')
 
