@@ -37,6 +37,19 @@ Issues = "https://github.com/atsuoishimoto/django-filechest/issues"
 [project.scripts]
 filechest = "django_filechest.__main__:main"
 
+[project.optional-dependencies]
+gtk = [
+    "pywebview[gtk]>=6.1",
+]
+
+qt = [
+    "pywebview[qt]>=6.1",
+]
+
+webview = [
+    "pywebview>=6.1",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",

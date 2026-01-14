@@ -20,6 +20,7 @@ import webbrowser
 from pathlib import Path
 from django.utils.text import slugify
 from hashlib import sha256
+from shutil import rmtree
 
 
 def is_s3_bucket_list_mode(path: str) -> bool:
@@ -32,28 +33,36 @@ def sanitize_bucket_name(bucket_name: str) -> str:
     return slugify(bucket_name) + "_" + sha256(bucket_name.encode()).hexdigest()[:8]
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Start a file manager for a directory or S3 bucket",
-        prog="django-filechest",
-    )
-    parser.add_argument(
-        "path",
-        help='Path to directory, S3 URL (s3://bucket/prefix), or "s3://" to list all buckets',
-    )
-    parser.add_argument(
-        "-p",
-        "--port",
-        type=int,
-        default=8000,
-        help="Port to run the server on (default: 8000)",
-    )
-    parser.add_argument(
-        "--no-browser",
-        action="store_true",
-        help="Do not open browser automatically",
-    )
+parser = argparse.ArgumentParser(
+    description="Start a file manager for a directory or S3 bucket",
+    prog="filechest",
+)
+parser.add_argument(
+    "path",
+    help='Path to directory, S3 URL (s3://bucket/prefix), or "s3://" to list all buckets',
+)
+parser.add_argument(
+    "-p",
+    "--port",
+    type=int,
+    default=8000,
+    help="Port to run the server on (default: 8000)",
+)
+parser.add_argument(
+    "--no-browser",
+    action="store_true",
+    help="Do not open browser automatically",
+)
 
+parser.add_argument(
+    "-g",
+    "--gui",
+    action="store_true",
+    help="Open GUI window",
+)
+
+
+def main():
     args = parser.parse_args()
 
     # Create temporary database file
@@ -105,6 +114,7 @@ def main():
         # Determine which page to open
         if is_s3_bucket_list_mode(path):
             # Open home page showing all buckets
+            page = ""
             url = f"http://127.0.0.1:{args.port}/"
             display_path = "S3 (all buckets)"
         else:
@@ -120,8 +130,9 @@ def main():
                 sys.exit(1)
 
             if prefix:
-                url = f"http://127.0.0.1:{args.port}/{volume_name}/browse/{prefix}/"
+                page = f"{volume_name}/browse/{prefix}/"
             else:
+                page = f"{volume_name}/"
                 url = f"http://127.0.0.1:{args.port}/{volume_name}/"
             display_path = path
 
@@ -140,26 +151,66 @@ def main():
             is_active=True,
             public_read=True,
         )
+        page = f"{volume_name}/"
         url = f"http://127.0.0.1:{args.port}/{volume_name}/"
         display_path = path
 
-    # Open browser after a short delay
-    if not args.no_browser:
+    if args.gui:
+        import webview
+        from django_filechest import wsgi
 
-        def open_browser():
-            time.sleep(1.0)
-            webbrowser.open(url)
+        cwd = Path(".").resolve()
 
-        threading.Thread(target=open_browser, daemon=True).start()
+        config = f"""
+        XDG_DESKTOP_DIR="{cwd}"
+        XDG_DOWNLOAD_DIR="{cwd}"
+        XDG_DOCUMENTS_DIR="{cwd}"
+        XDG_MUSIC_DIR="{cwd}"
+        XDG_PICTURES_DIR="{cwd}"
+        XDG_PUBLICSHARE_DIR="{cwd}"
+        XDG_TEMPLATES_DIR="{cwd}"
+        XDG_VIDEOS_DIR="{cwd}"
+        """
 
-    print(f"\nStarting FileChest for: {display_path}")
-    print(f"Open your browser at: {url}")
-    print("Press Ctrl+C to stop\n")
+        cfg = Path(tempfile.mkdtemp())
+        try:
+            (cfg / "user-dirs.dirs").write_text(config)
+            os.environ["XDG_CONFIG_HOME"] = str(cfg)
 
-    # Run the development server
-    from django.core.management import execute_from_command_line
+            def on_start(window):
+                window.load_url(f"/{page}")
 
-    execute_from_command_line(["manage.py", "runserver", str(args.port), "--noreload"])
+            webview.settings["ALLOW_DOWNLOADS"] = True
+            webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
+
+            window = webview.create_window(
+                f"FileChest - {display_path}", wsgi.application, text_select=True
+            )
+            webview.start(on_start, window)
+        finally:
+            rmtree(cfg)
+
+    else:
+        # Open browser after a short delay
+        url = f"http://127.0.0.1:{args.port}/{page}"
+        if not args.no_browser:
+
+            def open_browser():
+                time.sleep(1.0)
+                webbrowser.open(url)
+
+            threading.Thread(target=open_browser, daemon=True).start()
+
+        print(f"\nStarting FileChest for: {display_path}")
+        print(f"Open your browser at: {url}")
+        print("Press Ctrl+C to stop\n")
+
+        # Run the development server
+        from django.core.management import execute_from_command_line
+
+        execute_from_command_line(
+            ["manage.py", "runserver", str(args.port), "--noreload"]
+        )
 
 
 if __name__ == "__main__":

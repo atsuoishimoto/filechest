@@ -20,7 +20,7 @@
                 {% else %}
                 <a href="{% url 'filechest:index' volume.name %}" class="btn-back">Back</a>
                 {% endif %}
-                <a href="{% url 'filechest:api_download' volume.name filepath %}" class="btn-download">Download</a>
+                <a href="{% url 'filechest:api_download' volume.name filepath %}" class="btn-download" download>Download</a>
             </div>
         </div>
 
@@ -76,7 +76,7 @@
             <div class="preview-unknown">
                 <div class="icon">{{ filename|file_icon:False }}</div>
                 <p>Preview not available for this file type.</p>
-                <a href="{% url 'filechest:api_download' volume.name filepath %}" class="btn-download">Download File</a>
+                <a href="{% url 'filechest:api_download' volume.name filepath %}" class="btn-download" download>Download File</a>
             </div>
             {% endif %}
         </div>

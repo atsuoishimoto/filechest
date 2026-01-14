@@ -140,8 +140,8 @@
 
 {% block content %}
     <div class="container">
+        {% if not adhoc_mode %}
         <div class="user-bar">
-            {% if not adhoc_mode %}
               {% if user.is_authenticated %}
                 <span class="username">{{ user.username }}</span>
                 <form action="{% url 'filechest:logout' %}" method="post" style="display:inline;">
@@ -151,8 +151,8 @@
               {% else %}
                 <a href="{% url 'filechest:login' %}" class="btn-login">Login</a>
               {% endif %}
-            {% endif %}
         </div>
+        {% endif %}
 
         <h1 class="page-title">FileChest</h1>
         <p class="page-subtitle">Select a volume to browse files</p>
