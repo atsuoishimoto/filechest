@@ -70,3 +70,13 @@ def add_path(base: str, name: str) -> str:
     if base:
         return f"{base}/{name}"
     return name
+
+
+IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"}
+
+
+@register.filter
+def is_image_file(filename: str) -> bool:
+    """Check if file is an image based on extension."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    return ext in IMAGE_EXTENSIONS

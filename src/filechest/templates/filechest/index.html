@@ -3,6 +3,13 @@
 
 {% block title %}{{ volume.verbose_name }} - FileChest{% endblock %}
 
+{% block extra_head %}
+<style>
+.grid-thumbnail { display: none !important; }
+.file-list.grid-view .grid-thumbnail { display: flex !important; }
+</style>
+{% endblock %}
+
 {% block content %}
     <div class="container{% if can_edit %} drop-zone{% endif %}" id="drop-zone">
         <div class="header">
@@ -53,6 +60,17 @@
             <button id="btn-copy-here" onclick="copyHere()" disabled>📋 Copy</button>
             <button id="btn-move-here" onclick="moveHere()" disabled>📦 Move</button>
             <button id="btn-clear-marks" onclick="clearClipboard()" style="display:none;">✕ Clear</button>
+            <div class="view-toggle">
+                <button id="btn-list-view" class="active" onclick="setViewMode('list')" title="List view">☰</button>
+                <button id="btn-grid-view" onclick="setViewMode('grid')" title="Grid view">▦</button>
+            </div>
+        </div>
+        {% else %}
+        <div class="toolbar" style="justify-content: flex-end;">
+            <div class="view-toggle">
+                <button id="btn-list-view" class="active" onclick="setViewMode('list')" title="List view">☰</button>
+                <button id="btn-grid-view" onclick="setViewMode('grid')" title="Grid view">▦</button>
+            </div>
         </div>
         {% endif %}
 
@@ -77,6 +95,19 @@
                     {% endif %}
                 {% endif %}
                     <span class="file-icon">{{ item.name|file_icon:item.is_dir }}</span>
+                    <div class="grid-thumbnail">
+                        {% if item.is_dir %}
+                        <span class="file-icon">📁</span>
+                        {% elif item.name|is_image_file %}
+                            {% if subpath %}
+                        <img data-src="{% url 'filechest:api_raw' volume.name subpath|add_path:item.name %}" alt="{{ item.name }}" loading="lazy">
+                            {% else %}
+                        <img data-src="{% url 'filechest:api_raw' volume.name item.name %}" alt="{{ item.name }}" loading="lazy">
+                            {% endif %}
+                        {% else %}
+                        <span class="file-icon">{{ item.name|file_icon:item.is_dir }}</span>
+                        {% endif %}
+                    </div>
                     <span class="file-name">{{ item.name }}</span>
                 </a>
                 <span class="file-size">
@@ -879,7 +910,46 @@
             }
         });
 
-        // Initialize clipboard buttons on page load
-        document.addEventListener('DOMContentLoaded', updateClipboardButtons);
+        // View mode management
+        const VIEW_MODE_KEY = 'filechest_view_mode';
+
+        function getViewMode() {
+            return localStorage.getItem(VIEW_MODE_KEY) || 'list';
+        }
+
+        function setViewMode(mode) {
+            localStorage.setItem(VIEW_MODE_KEY, mode);
+            applyViewMode(mode);
+        }
+
+        function applyViewMode(mode) {
+            const fileList = document.querySelector('.file-list');
+            const listBtn = document.getElementById('btn-list-view');
+            const gridBtn = document.getElementById('btn-grid-view');
+
+            if (!fileList) return;
+
+            if (mode === 'grid') {
+                fileList.classList.add('grid-view');
+                listBtn?.classList.remove('active');
+                gridBtn?.classList.add('active');
+                // Load thumbnails
+                fileList.querySelectorAll('.grid-thumbnail img[data-src]').forEach(img => {
+                    if (!img.src) {
+                        img.src = img.dataset.src;
+                    }
+                });
+            } else {
+                fileList.classList.remove('grid-view');
+                listBtn?.classList.add('active');
+                gridBtn?.classList.remove('active');
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateClipboardButtons();
+            applyViewMode(getViewMode());
+        });
     </script>
 {% endblock %}
