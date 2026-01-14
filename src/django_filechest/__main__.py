@@ -58,7 +58,7 @@ parser.add_argument(
     "-g",
     "--gui",
     action="store_true",
-    help="Open GUI window",
+    help="Open GUI window (Experimental)",
 )
 
 
