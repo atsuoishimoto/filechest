@@ -41,11 +41,6 @@ filechest = "django_filechest.__main__:main"
 gtk = [
     "pywebview[gtk]>=6.1",
 ]
-
-qt = [
-    "pywebview[qt]>=6.1",
-]
-
 webview = [
     "pywebview>=6.1",
 ]
@@ -55,6 +50,7 @@ dev = [
     "pytest>=9.0.2",
     "pytest-django>=4.11.1",
     "moto[s3]>=5.0.0",
+    "pyinstaller>=6.18.0",
 ]
 
 [tool.uv.build-backend]
