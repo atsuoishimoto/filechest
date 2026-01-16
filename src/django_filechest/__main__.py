@@ -61,9 +61,19 @@ parser.add_argument(
     help="Open GUI window (Experimental)",
 )
 
+parser.add_argument(
+    "-a",
+    "--aws-profile",
+    help="AWS profile name to use (sets AWS_PROFILE environment variable)",
+)
+
 
 def main():
     args = parser.parse_args()
+
+    # Set AWS profile if specified
+    if args.aws_profile:
+        os.environ["AWS_PROFILE"] = args.aws_profile
 
     # Create temporary database file
     db_fd, db_path = tempfile.mkstemp(suffix=".sqlite3", prefix="filechest_")
