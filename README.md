@@ -98,20 +98,46 @@ Use the `-a` option to specify a named profile:
 filechest -a my-profile s3://bucket-name
 ```
 
+### GUI Mode (Experimental)
+
+FileChest can run as a standalone GUI application using [pywebview](https://pywebview.flowrl.com/).
+
+```bash
+filechest -g /path/to/directory
+```
+
+#### Installation for GUI
+
+Install the appropriate variant for your platform:
+
+```bash
+# Windows / macOS
+uv tool install filechest[webview]
+
+# Linux (GTK)
+uv tool install filechest[gtk]
+```
+
+#### System Dependencies
+
+pywebview may require additional system libraries depending on your platform. See the [pywebview installation guide](https://pywebview.flowrl.com/guide/installation.html) for details.
+
+For example, on **WSL2 Ubuntu 24.04**, the following packages are required:
+
+```bash
+sudo apt install pkg-config cmake libcairo2-dev libgirepository1.0-dev gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+```
+
 ---
 
 ## Using as a Django Application
 
-FileChest is also available as a reusable Django app for building web-based file management systems. When used as a Django app, you can:
-
-- Register multiple directories and S3 buckets as "Volumes"
-- Control user access with role-based permissions (viewer/editor)
-- Enable public read access for specific volumes
+FileChest can be integrated into your Django project as a reusable app, enabling multi-user file management with access control.
 
 ### Setup
 
 ```bash
-git clone https://github.com/atsuoishimoto/django-filechest.git
+git clone https://github.com/atsuoishimoto/filechest.git
 cd django-filechest
 uv sync
 uv run python manage.py migrate
@@ -119,33 +145,50 @@ uv run python manage.py createsuperuser
 uv run python manage.py runserver
 ```
 
-Open http://127.0.0.1:8000/admin/ and configure via Django admin:
+Open http://127.0.0.1:8000/admin/ to configure volumes and permissions.
 
-- **Filechest > Volumes**: Add directories or S3 URLs to manage
-- **Filechest > Volume permissions**: Assign users access to volumes
+### Key Concepts
 
-### Volume Settings
+**Volume**: A storage location (local directory or S3 bucket) that users can browse.
 
-| Field | Description |
-|-------|-------------|
-| `name` | URL-safe identifier (slug) |
-| `verbose_name` | Display name shown in UI |
-| `path` | Local filesystem path or S3 URL (`s3://bucket/prefix`) |
-| `public_read` | Allow anonymous read access |
-| `max_file_size` | Maximum upload size in bytes (default: 10MB) |
-| `is_active` | Enable/disable the volume |
+**Role**: Access level granted to a user for a volume.
+- **Editor** – Full access: browse, upload, download, create, rename, delete, copy, move
+- **Viewer** – Read-only: browse and download only
+
+### Creating a Volume
+
+In Django Admin, go to **Filechest > Volumes** and add a new volume:
+
+| Field           | Description                                            |
+| --------------- | ------------------------------------------------------ |
+| `name`          | URL-safe identifier used in the URL path               |
+| `verbose_name`  | Human-readable name shown in UI                        |
+| `path`          | Local path (`/data/files`) or S3 URL (`s3://bucket/prefix`) |
+| `public_read`   | If checked, anyone can view without logging in         |
+| `max_file_size` | Maximum upload size in bytes (default: 10MB)           |
+| `is_active`     | Uncheck to disable the volume                          |
 
 ### Access Control
 
-| User Type | Condition | Access Level |
-|-----------|-----------|--------------|
-| Superuser | Always | Editor |
-| Authenticated | Has VolumePermission with role=editor | Editor |
-| Authenticated | Has VolumePermission with role=viewer | Viewer |
-| Authenticated | No permission, public_read=True | Viewer |
-| Authenticated | No permission, public_read=False | No access |
-| Anonymous | public_read=True | Viewer |
-| Anonymous | public_read=False | No access |
+Access is determined by the following rules, evaluated in order:
+
+1. **Superusers** always have **Editor** access to all volumes.
+
+2. **Users with VolumePermission** get the assigned role:
+   - Go to **Filechest > Volume permissions** in Django Admin
+   - Select a user and volume, then assign `editor` or `viewer` role
+
+3. **Public volumes** (`public_read=True`): Anyone without explicit permission gets **Viewer** access, including anonymous users.
+
+4. **Private volumes** (`public_read=False`): Users without permission cannot access the volume at all.
+
+### Examples
+
+**Team shared drive**: Create a volume, add VolumePermission for each team member with `editor` role.
+
+**Public file hosting**: Create a volume with `public_read=True`. Anyone can browse and download. Add specific users as `editor` to allow uploads.
+
+**Personal storage**: Create a volume per user with VolumePermission (`editor`). Leave `public_read=False` so only that user can access it.
 
 ---
 
@@ -155,5 +198,5 @@ MIT License
 
 ## Links
 
-- GitHub: https://github.com/atsuoishimoto/django-filechest
-- Issues: https://github.com/atsuoishimoto/django-filechest/issues
+- GitHub: https://github.com/atsuoishimoto/filechest
+- Issues: https://github.com/atsuoishimoto/filechest/issues
