@@ -277,6 +277,10 @@ class LocalStorage(BaseStorage):
         return target
 
     def list_dir(self, path: str) -> list[FileInfo]:
+        from django.conf import settings
+
+        max_entries = getattr(settings, "FILECHEST_MAX_DIR_ENTRIES", 1000)
+
         target = self._resolve(path)
 
         if not target.exists():
@@ -288,6 +292,8 @@ class LocalStorage(BaseStorage):
         items = []
         try:
             for entry in target.iterdir():
+                if len(items) >= max_entries:
+                    break
                 stat = entry.stat()
                 items.append(
                     FileInfo(
@@ -563,6 +569,10 @@ class S3Storage(BaseStorage):
         return response.get("KeyCount", 0) > 0
 
     def list_dir(self, path: str) -> list[FileInfo]:
+        from django.conf import settings
+
+        max_entries = getattr(settings, "FILECHEST_MAX_DIR_ENTRIES", 1000)
+
         self._validate_path(path)
 
         full_prefix = self._full_key(path)
@@ -577,6 +587,8 @@ class S3Storage(BaseStorage):
 
         # Add directories
         for dir_key in dirs:
+            if len(items) >= max_entries:
+                break
             name = dir_key.split("/")[-1]
             if name:
                 items.append(
@@ -591,6 +603,8 @@ class S3Storage(BaseStorage):
         # Add files
         prefix_to_strip = full_prefix + "/" if full_prefix else ""
         for obj in files:
+            if len(items) >= max_entries:
+                break
             key = obj["Key"]
             name = key[len(prefix_to_strip) :] if prefix_to_strip else key
             # Skip nested files (should be handled by delimiter)

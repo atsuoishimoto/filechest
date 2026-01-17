@@ -56,7 +56,9 @@ The command starts a web server and opens your browser automatically.
 ### Command Line Options
 
 ```
-usage: filechest [-h] [-p PORT] [--no-browser] [-g] [-a AWS_PROFILE] path
+usage: filechest [-h] [-p PORT] [--no-browser] [-g] [-a AWS_PROFILE]
+                 [--max-buckets MAX_BUCKETS] [--max-entries MAX_ENTRIES]
+                 path
 
 Start a file manager for a directory or S3 bucket
 
@@ -70,6 +72,10 @@ options:
   -g, --gui             Open GUI window (Experimental)
   -a, --aws-profile AWS_PROFILE
                         AWS profile name to use (sets AWS_PROFILE environment variable)
+  --max-buckets MAX_BUCKETS
+                        Maximum number of S3 buckets to load (default: 100)
+  --max-entries MAX_ENTRIES
+                        Maximum number of files/directories to list (default: 1000)
 ```
 
 ### S3 Configuration

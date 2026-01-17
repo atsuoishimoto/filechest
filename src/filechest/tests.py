@@ -1136,3 +1136,75 @@ class TestAdhocMode:
         """Test bucket name sanitization for Django slug compatibility."""
         assert sanitize_bucket_name("my-bucket") == "my-bucket_a483e74c"
         assert sanitize_bucket_name("my.bucket.name") == "mybucketname_2c8b40a2"
+
+
+# =============================================================================
+# Settings Limit Tests
+# =============================================================================
+
+
+class TestMaxDirEntries:
+    """Test FILECHEST_MAX_DIR_ENTRIES setting."""
+
+    def test_local_storage_respects_limit(self, settings):
+        """LocalStorage.list_dir respects FILECHEST_MAX_DIR_ENTRIES."""
+        settings.FILECHEST_MAX_DIR_ENTRIES = 5
+
+        path = tempfile.mkdtemp()
+        try:
+            # Create 10 files
+            for i in range(10):
+                (Path(path) / f"file{i:02d}.txt").write_text("x")
+
+            storage = LocalStorage(path)
+            items = storage.list_dir("")
+
+            assert len(items) == 5
+        finally:
+            shutil.rmtree(path, ignore_errors=True)
+
+    def test_s3_storage_respects_limit(self, settings):
+        """S3Storage.list_dir respects FILECHEST_MAX_DIR_ENTRIES."""
+        settings.FILECHEST_MAX_DIR_ENTRIES = 5
+
+        with mock_aws():
+            s3_client = boto3.client("s3", region_name="us-east-1")
+            bucket_name = "test-bucket"
+            s3_client.create_bucket(Bucket=bucket_name)
+
+            # Create 10 files
+            for i in range(10):
+                s3_client.put_object(
+                    Bucket=bucket_name, Key=f"file{i:02d}.txt", Body=b"x"
+                )
+
+            storage = S3Storage(bucket_name, prefix="", s3_client=s3_client)
+            items = storage.list_dir("")
+
+            assert len(items) == 5
+
+    def test_s3_storage_limit_includes_dirs_and_files(self, settings):
+        """S3Storage.list_dir limit applies to total of dirs and files."""
+        settings.FILECHEST_MAX_DIR_ENTRIES = 5
+
+        with mock_aws():
+            s3_client = boto3.client("s3", region_name="us-east-1")
+            bucket_name = "test-bucket"
+            s3_client.create_bucket(Bucket=bucket_name)
+
+            # Create 3 directories (by creating files under them)
+            for i in range(3):
+                s3_client.put_object(
+                    Bucket=bucket_name, Key=f"dir{i}/.keep", Body=b""
+                )
+            # Create 5 files
+            for i in range(5):
+                s3_client.put_object(
+                    Bucket=bucket_name, Key=f"file{i}.txt", Body=b"x"
+                )
+
+            storage = S3Storage(bucket_name, prefix="", s3_client=s3_client)
+            items = storage.list_dir("")
+
+            # Should have 5 items total (3 dirs + 2 files, or some combination)
+            assert len(items) == 5

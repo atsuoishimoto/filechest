@@ -67,6 +67,18 @@ parser.add_argument(
     help="AWS profile name to use (sets AWS_PROFILE environment variable)",
 )
 
+parser.add_argument(
+    "--max-buckets",
+    type=int,
+    help="Maximum number of S3 buckets to load (default: 100)",
+)
+
+parser.add_argument(
+    "--max-entries",
+    type=int,
+    help="Maximum number of files/directories to list (default: 1000)",
+)
+
 
 def main():
     args = parser.parse_args()
@@ -74,6 +86,12 @@ def main():
     # Set AWS profile if specified
     if args.aws_profile:
         os.environ["AWS_PROFILE"] = args.aws_profile
+
+    # Set limit options via environment variables (to override settings)
+    if args.max_buckets is not None:
+        os.environ["FILECHEST_MAX_S3_BUCKETS"] = str(args.max_buckets)
+    if args.max_entries is not None:
+        os.environ["FILECHEST_MAX_DIR_ENTRIES"] = str(args.max_entries)
 
     # Create temporary database file
     db_fd, db_path = tempfile.mkstemp(suffix=".sqlite3", prefix="filechest_")
@@ -99,7 +117,10 @@ def main():
     path = args.path
     if is_s3_bucket_list_mode(path) or path.startswith("s3://"):
         # S3 mode - create volumes for all accessible buckets
+        from django.conf import settings
         from filechest.storage import list_s3_buckets, parse_s3_path
+
+        max_buckets = getattr(settings, "FILECHEST_MAX_S3_BUCKETS", 100)
 
         try:
             buckets = list_s3_buckets()
@@ -110,6 +131,14 @@ def main():
         if not buckets:
             print("No S3 buckets found", file=sys.stderr)
             sys.exit(1)
+
+        # Limit the number of buckets
+        if len(buckets) > max_buckets:
+            print(
+                f"Warning: Found {len(buckets)} buckets, limiting to {max_buckets}",
+                file=sys.stderr,
+            )
+            buckets = buckets[:max_buckets]
 
         # Create a volume for each bucket
         for bucket_name in buckets:

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -131,3 +132,11 @@ LOGGING = {
         "level": "WARNING",
     },
 }
+
+# FileChest settings (can be overridden via environment variables)
+FILECHEST_MAX_S3_BUCKETS = int(
+    os.environ.get("FILECHEST_MAX_S3_BUCKETS", 100)
+)  # Maximum number of S3 buckets to load at startup
+FILECHEST_MAX_DIR_ENTRIES = int(
+    os.environ.get("FILECHEST_MAX_DIR_ENTRIES", 1000)
+)  # Maximum number of files/directories to list
