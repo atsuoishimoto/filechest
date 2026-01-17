@@ -27,6 +27,9 @@ We recommend using [uv](https://docs.astral.sh/uv/) for the best experience. See
 # Using uvx (recommended, no installation needed)
 uvx filechest /path/to/directory
 
+# or install globally with uv
+uv tool install filechest
+
 # Or install globally with pipx
 pipx install filechest
 ```
