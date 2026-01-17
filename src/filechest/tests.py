@@ -458,27 +458,6 @@ class TestApiMove:
         assert (Path(volume.path) / "dest" / "tomove.txt").exists()
 
 
-class TestApiDownload:
-    """Test api_download endpoint."""
-
-    def test_download_file(self, client, public_volume):
-        """Can download file from public volume."""
-        test_file = Path(public_volume.path) / "download.txt"
-        test_file.write_text("download content")
-
-        response = client.get(f"/api/{public_volume.name}/download/download.txt/")
-        assert response.status_code == 200
-        assert b"download content" in b"".join(response.streaming_content)
-
-    def test_download_private_forbidden(self, client, volume):
-        """Cannot download from private volume without permission."""
-        test_file = Path(volume.path) / "secret.txt"
-        test_file.write_text("secret")
-
-        response = client.get(f"/api/{volume.name}/download/secret.txt/")
-        assert response.status_code == 403
-
-
 class TestPreview:
     """Test preview page."""
 

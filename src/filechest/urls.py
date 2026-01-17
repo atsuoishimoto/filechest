@@ -20,11 +20,6 @@ urlpatterns = [
         views.api_list,
         name="api_list_subpath",
     ),
-    path(
-        "api/<slug:volume_name>/download/<path:filepath>/",
-        views.api_download,
-        name="api_download",
-    ),
     path("api/<slug:volume_name>/raw/<path:filepath>/", views.api_raw, name="api_raw"),
     # API - Write operations
     path("api/<slug:volume_name>/mkdir/", views.api_mkdir, name="api_mkdir"),

@@ -389,28 +389,6 @@ def api_list(request, volume_name: str, subpath: str = ""):
 
 
 @require_GET
-def api_download(request, volume_name: str, filepath: str):
-    """API: Download a file."""
-    volume = get_object_or_404(Volume, name=volume_name, is_active=True)
-
-    if not can_view(request.user, volume):
-        return HttpResponseForbidden("Access denied")
-
-    storage = get_storage(volume)
-
-    try:
-        file_obj, _ = storage.open_file(filepath)
-        filename = Path(filepath).name
-        return FileResponse(file_obj, as_attachment=True, filename=filename)
-    except PathNotFoundError:
-        raise Http404("File not found")
-    except NotAFileError:
-        return HttpResponse("Not a file", status=400)
-    except PermissionDeniedError:
-        return HttpResponseForbidden("Permission denied")
-
-
-@require_GET
 @xframe_options_sameorigin
 def api_raw(request, volume_name: str, filepath: str):
     """API: Serve file content inline (for preview)."""
