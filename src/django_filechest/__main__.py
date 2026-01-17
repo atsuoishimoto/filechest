@@ -200,6 +200,7 @@ def main():
 
             def on_start(window):
                 window.load_url(f"/{page}")
+                window.evaluate_js("document.documentElement.style.zoom = 1.1")
 
             webview.settings["ALLOW_DOWNLOADS"] = True
             webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True

@@ -3,6 +3,11 @@ exe: package pyinstaller
 
 .PHONY: package exe
 
+format:
+	ruff format src
+	ruff check --fix src
+
+
 clean:
 	rm -rf dist build
 
