@@ -227,15 +227,69 @@ def main():
             (cfg / "user-dirs.dirs").write_text(config)
             os.environ["XDG_CONFIG_HOME"] = str(cfg)
 
+            loading_html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #1976d2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">
+        <div class="spinner"></div>
+        <div class="title">FileChest</div>
+        <div class="subtitle">Loading...</div>
+    </div>
+</body>
+</html>
+"""
+
             def on_start(window):
-                window.load_url(f"/{page}")
+                window.load_html(loading_html)
                 window.evaluate_js("document.documentElement.style.zoom = 1.1")
+                window.load_url(f"/{page}")
 
             webview.settings["ALLOW_DOWNLOADS"] = True
             webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
 
             window = webview.create_window(
-                f"FileChest - {display_path}", wsgi.application, text_select=True
+                f"FileChest - {display_path}", url=wsgi.application, text_select=True, zoomable=True
             )
             webview.start(on_start, window)
         finally:
