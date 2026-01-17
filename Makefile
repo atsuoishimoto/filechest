@@ -12,7 +12,5 @@ collectstatic:
 build:
 	uv build
 
-
-
 pyinstaller:
 	uv run pyinstaller src/main.py --collect-all django_filechest --collect-all filechest --collect-all whitenoise

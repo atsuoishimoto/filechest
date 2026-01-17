@@ -912,23 +912,13 @@
 
         // View mode management
         const VIEW_MODE_KEY = 'filechest_view_mode';
-        let currentViewMode = 'list';  // Fallback when localStorage unavailable
 
         function getViewMode() {
-            try {
-                return localStorage.getItem(VIEW_MODE_KEY) || 'list';
-            } catch (e) {
-                return currentViewMode;
-            }
+            return sessionStorage.getItem(VIEW_MODE_KEY) || 'list';
         }
 
         function setViewMode(mode) {
-            currentViewMode = mode;
-            try {
-                localStorage.setItem(VIEW_MODE_KEY, mode);
-            } catch (e) {
-                // localStorage unavailable (e.g., GTK WebKit)
-            }
+            sessionStorage.setItem(VIEW_MODE_KEY, mode);
             applyViewMode(mode);
         }
 
