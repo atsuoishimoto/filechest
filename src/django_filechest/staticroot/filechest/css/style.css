@@ -3,6 +3,47 @@
    ============================================================================= */
 
 /* -----------------------------------------------------------------------------
+   CSS Custom Properties
+   ----------------------------------------------------------------------------- */
+:root {
+    /* Text colors */
+    --color-text: #333;
+    --color-text-muted: #666;
+    --color-text-faint: #999;
+
+    /* Background colors */
+    --color-bg: #f5f5f5;
+    --color-bg-alt: #fafafa;
+    --color-bg-hover: #f0f0f0;
+    --color-bg-card: white;
+
+    /* Border colors */
+    --color-border: #ddd;
+    --color-border-light: #eee;
+    --color-border-dark: #e0e0e0;
+
+    /* Primary (blue) */
+    --color-primary: #1976d2;
+    --color-primary-hover: #1565c0;
+    --color-primary-light: #e3f2fd;
+    --color-link: #0066cc;
+
+    /* Success (green) */
+    --color-success: #388e3c;
+
+    /* Danger (red) */
+    --color-danger: #d32f2f;
+    --color-danger-light: #ffebee;
+
+    /* Warning (orange) */
+    --color-warning: #ff9800;
+
+    /* Code preview */
+    --color-code-bg: #1e1e1e;
+    --color-code-text: #d4d4d4;
+}
+
+/* -----------------------------------------------------------------------------
    Base Styles
    ----------------------------------------------------------------------------- */
 * {
@@ -13,13 +54,13 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     margin: 0;
     padding: 20px;
-    background: #f5f5f5;
+    background: var(--color-bg);
 }
 
 .container {
     max-width: 1000px;
     margin: 0 auto;
-    background: white;
+    background: var(--color-bg-card);
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     padding: 20px;
@@ -38,7 +79,7 @@ body {
     align-items: center;
     margin-bottom: 15px;
     padding-bottom: 15px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--color-border-light);
 }
 
 .header-left {
@@ -56,18 +97,18 @@ body {
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: #f5f5f5;
-    border: 1px solid #ddd;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
     border-radius: 6px;
     cursor: pointer;
     font-size: 1.1em;
     font-weight: 500;
-    color: #333;
+    color: var(--color-text);
     transition: background 0.2s;
 }
 
 .volume-btn:hover {
-    background: #eee;
+    background: var(--color-border-light);
 }
 
 .volume-icon {
@@ -76,7 +117,7 @@ body {
 
 .dropdown-arrow {
     font-size: 0.7em;
-    color: #666;
+    color: var(--color-text-muted);
     margin-left: 4px;
 }
 
@@ -86,8 +127,8 @@ body {
     top: 100%;
     left: 0;
     min-width: 200px;
-    background: white;
-    border: 1px solid #ddd;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
@@ -104,18 +145,18 @@ body {
     align-items: center;
     gap: 10px;
     padding: 10px 14px;
-    color: #333;
+    color: var(--color-text);
     text-decoration: none;
     transition: background 0.2s;
 }
 
 .volume-item:hover {
-    background: #f5f5f5;
+    background: var(--color-bg);
 }
 
 .volume-item.active {
-    background: #e3f2fd;
-    color: #1976d2;
+    background: var(--color-primary-light);
+    color: var(--color-primary);
 }
 
 .volume-item-icon {
@@ -134,7 +175,7 @@ body {
 }
 
 .user-info .username {
-    color: #333;
+    color: var(--color-text);
     font-weight: 500;
 }
 
@@ -146,17 +187,17 @@ body {
 }
 
 .user-info .btn-login {
-    background: #1976d2;
+    background: var(--color-primary);
     color: white;
 }
 
 .user-info .btn-login:hover {
-    background: #1565c0;
+    background: var(--color-primary-hover);
 }
 
 .user-info .btn-logout {
-    background: #eee;
-    color: #333;
+    background: var(--color-border-light);
+    color: var(--color-text);
     border: none;
     cursor: pointer;
     padding: 6px 12px;
@@ -165,7 +206,7 @@ body {
 }
 
 .user-info .btn-logout:hover {
-    background: #ddd;
+    background: var(--color-border);
 }
 
 .user-info .btn-home {
@@ -187,12 +228,12 @@ body {
 .breadcrumb {
     margin-bottom: 15px;
     padding: 10px;
-    background: #f0f0f0;
+    background: var(--color-bg-hover);
     border-radius: 4px;
 }
 
 .breadcrumb a {
-    color: #0066cc;
+    color: var(--color-link);
     text-decoration: none;
 }
 
@@ -201,7 +242,7 @@ body {
 }
 
 .breadcrumb span {
-    color: #666;
+    color: var(--color-text-muted);
     margin: 0 5px;
 }
 
@@ -212,15 +253,15 @@ body {
     display: inline-block;
     font-size: 0.85em;
     font-weight: normal;
-    color: #666;
+    color: var(--color-text-muted);
 }
 
 .role-viewer {
-    color: #1976d2;
+    color: var(--color-primary);
 }
 
 .role-editor {
-    color: #388e3c;
+    color: var(--color-success);
 }
 
 /* -----------------------------------------------------------------------------
@@ -231,7 +272,7 @@ body {
     gap: 8px;
     margin-bottom: 15px;
     padding: 10px;
-    background: #fafafa;
+    background: var(--color-bg-alt);
     border-radius: 4px;
     flex-wrap: wrap;
     align-items: center;
@@ -240,16 +281,16 @@ body {
 .toolbar button,
 .toolbar label {
     padding: 8px 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
-    background: white;
+    background: var(--color-bg-card);
     cursor: pointer;
     font-size: 14px;
 }
 
 .toolbar button:hover,
 .toolbar label:hover {
-    background: #f0f0f0;
+    background: var(--color-bg-hover);
 }
 
 .toolbar button:disabled {
@@ -258,11 +299,11 @@ body {
 }
 
 .toolbar button.danger {
-    color: #d32f2f;
+    color: var(--color-danger);
 }
 
 .toolbar button.danger:hover {
-    background: #ffebee;
+    background: var(--color-danger-light);
 }
 
 .toolbar .spacer {
@@ -270,7 +311,7 @@ body {
 }
 
 .toolbar .separator {
-    color: #ccc;
+    color: var(--color-border);
     margin: 0 4px;
 }
 
@@ -291,15 +332,15 @@ body {
     display: flex;
     align-items: center;
     padding: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--color-border-light);
 }
 
 .file-item:hover {
-    background: #f9f9f9;
+    background: var(--color-bg-alt);
 }
 
 .file-item.selected {
-    background: #e3f2fd;
+    background: var(--color-primary-light);
 }
 
 .file-checkbox {
@@ -318,12 +359,12 @@ body {
     display: flex;
     align-items: center;
     flex: 1;
-    color: #333;
+    color: var(--color-text);
     text-decoration: none;
 }
 
 .file-link:hover {
-    color: #0066cc;
+    color: var(--color-link);
 }
 
 .file-name {
@@ -337,35 +378,35 @@ body {
 
 .file-actions button {
     padding: 4px 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border);
     border-radius: 3px;
-    background: white;
+    background: var(--color-bg-card);
     cursor: pointer;
     font-size: 12px;
 }
 
 .file-actions button:hover {
-    background: #f0f0f0;
+    background: var(--color-bg-hover);
 }
 
 .file-size {
     width: 80px;
     text-align: right;
-    color: #666;
+    color: var(--color-text-muted);
     font-size: 0.9em;
 }
 
 .file-date {
     width: 150px;
     text-align: right;
-    color: #666;
+    color: var(--color-text-muted);
     font-size: 0.9em;
 }
 
 .empty {
     text-align: center;
     padding: 40px;
-    color: #666;
+    color: var(--color-text-muted);
 }
 
 /* -----------------------------------------------------------------------------
@@ -375,7 +416,7 @@ body {
     display: flex;
     gap: 2px;
     margin-left: auto;
-    background: #eee;
+    background: var(--color-border-light);
     border-radius: 4px;
     padding: 2px;
 }
@@ -396,7 +437,7 @@ body {
 }
 
 .view-toggle button.active {
-    background: white;
+    background: var(--color-bg-card);
     opacity: 1;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -423,21 +464,21 @@ body {
     flex-direction: column;
     align-items: center;
     padding: 12px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--color-border-dark);
     border-radius: 8px;
-    background: #fafafa;
+    background: var(--color-bg-alt);
     transition: all 0.2s;
     position: relative;
 }
 
 .file-list.grid-view .file-item:hover {
-    background: #f0f0f0;
+    background: var(--color-bg-hover);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .file-list.grid-view .file-item.selected {
-    background: #e3f2fd;
-    border-color: #1976d2;
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
 }
 
 .file-list.grid-view .file-checkbox {
@@ -461,7 +502,7 @@ body {
     align-items: center;
     justify-content: center;
     margin-bottom: 10px;
-    background: #f5f5f5;
+    background: var(--color-bg);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -520,7 +561,7 @@ body {
 }
 
 .modal-content {
-    background: white;
+    background: var(--color-bg-card);
     padding: 20px;
     border-radius: 8px;
     min-width: 300px;
@@ -534,7 +575,7 @@ body {
 .modal-content input[type="text"] {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     font-size: 14px;
     margin-bottom: 15px;
@@ -543,7 +584,7 @@ body {
 .modal-content select {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border);
     border-radius: 4px;
     font-size: 14px;
     margin-bottom: 15px;
@@ -563,21 +604,21 @@ body {
 }
 
 .modal-buttons .btn-cancel {
-    background: #eee;
+    background: var(--color-border-light);
 }
 
 .modal-buttons .btn-ok {
-    background: #1976d2;
+    background: var(--color-primary);
     color: white;
 }
 
 .modal-buttons .btn-danger {
-    background: #d32f2f;
+    background: var(--color-danger);
     color: white;
 }
 
 .modal-buttons .btn-secondary {
-    background: #ff9800;
+    background: var(--color-warning);
     color: white;
 }
 
@@ -587,7 +628,7 @@ body {
     overflow-y: auto;
     margin: 0 0 15px 0;
     padding: 0 0 0 20px;
-    color: #d32f2f;
+    color: var(--color-danger);
 }
 
 .error-list li {
@@ -606,17 +647,17 @@ body {
 .upload-file-list {
     max-height: 200px;
     overflow-y: auto;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--color-border-dark);
     border-radius: 4px;
     margin-bottom: 15px;
-    background: #fafafa;
+    background: var(--color-bg-alt);
 }
 
 .upload-file-item {
     display: flex;
     justify-content: space-between;
     padding: 8px 12px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--color-border-light);
     font-size: 14px;
 }
 
@@ -632,7 +673,7 @@ body {
 }
 
 .upload-file-size {
-    color: #666;
+    color: var(--color-text-muted);
     margin-left: 10px;
     flex-shrink: 0;
 }
@@ -663,8 +704,8 @@ body {
 }
 
 .upload-error {
-    color: #d32f2f;
-    background: #ffebee;
+    color: var(--color-danger);
+    background: var(--color-danger-light);
     padding: 10px;
     border-radius: 4px;
     margin-bottom: 15px;
@@ -691,11 +732,11 @@ body {
 }
 
 .toast.success {
-    background: #388e3c;
+    background: var(--color-success);
 }
 
 .toast.error {
-    background: #d32f2f;
+    background: var(--color-danger);
 }
 
 .toast.active {
@@ -712,8 +753,8 @@ body {
 }
 
 .drop-zone.drag-over {
-    border-color: #1976d2;
-    background: #e3f2fd;
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
 }
 
 .drop-zone.drag-over * {
@@ -741,7 +782,7 @@ body {
 }
 
 .upload-progress {
-    background: white;
+    background: var(--color-bg-card);
     padding: 30px;
     border-radius: 8px;
     min-width: 350px;
@@ -754,7 +795,7 @@ body {
 
 .progress-bar {
     height: 20px;
-    background: #e0e0e0;
+    background: var(--color-border-dark);
     border-radius: 10px;
     overflow: hidden;
     margin-bottom: 10px;
@@ -762,13 +803,13 @@ body {
 
 .progress-bar-fill {
     height: 100%;
-    background: #1976d2;
+    background: var(--color-primary);
     width: 0%;
     transition: width 0.2s ease;
 }
 
 .progress-text {
-    color: #666;
+    color: var(--color-text-muted);
     font-size: 14px;
 }
 
@@ -801,26 +842,26 @@ body {
     text-decoration: none;
     font-size: 14px;
     cursor: pointer;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-border);
 }
 
 .btn-back {
-    background: #f5f5f5;
-    color: #333;
+    background: var(--color-bg);
+    color: var(--color-text);
 }
 
 .btn-back:hover {
-    background: #e0e0e0;
+    background: var(--color-border-dark);
 }
 
 .btn-download {
-    background: #1976d2;
+    background: var(--color-primary);
     color: white;
     border: none;
 }
 
 .btn-download:hover {
-    background: #1565c0;
+    background: var(--color-primary-hover);
 }
 
 /* -----------------------------------------------------------------------------
@@ -830,26 +871,26 @@ body {
     display: flex;
     gap: 20px;
     padding: 10px 15px;
-    background: #fafafa;
+    background: var(--color-bg-alt);
     border-radius: 4px;
     margin-bottom: 20px;
     font-size: 14px;
-    color: #666;
+    color: var(--color-text-muted);
     flex-wrap: wrap;
 }
 
 .file-meta strong {
-    color: #333;
+    color: var(--color-text);
 }
 
 /* -----------------------------------------------------------------------------
    Preview Page - Preview Container
    ----------------------------------------------------------------------------- */
 .preview-container {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--color-border-dark);
     border-radius: 4px;
     overflow: hidden;
-    background: #fafafa;
+    background: var(--color-bg-alt);
     min-height: 200px;
 }
 
@@ -859,7 +900,7 @@ body {
     justify-content: center;
     align-items: center;
     padding: 20px;
-    background: #f0f0f0;
+    background: var(--color-bg-hover);
 }
 
 .preview-image img {
@@ -889,8 +930,8 @@ body {
 /* Text preview */
 .preview-text {
     padding: 0;
-    background: #1e1e1e;
-    color: #d4d4d4;
+    background: var(--color-code-bg);
+    color: var(--color-code-text);
     overflow: auto;
     max-height: 80vh;
 }
@@ -909,7 +950,7 @@ body {
 .preview-text .loading {
     padding: 40px;
     text-align: center;
-    color: #888;
+    color: var(--color-text-muted);
 }
 
 /* PDF preview */
@@ -931,7 +972,7 @@ body {
     justify-content: center;
     align-items: center;
     padding: 60px 20px;
-    color: #666;
+    color: var(--color-text-muted);
 }
 
 .preview-unknown .icon {
@@ -949,7 +990,7 @@ body {
 .footer {
     text-align: center;
     padding: 20px;
-    color: #999;
+    color: var(--color-text-faint);
     font-size: 0.85em;
     margin-top: 20px;
 }
@@ -959,7 +1000,7 @@ body {
 }
 
 .footer a {
-    color: #666;
+    color: var(--color-text-muted);
     text-decoration: none;
 }
 
