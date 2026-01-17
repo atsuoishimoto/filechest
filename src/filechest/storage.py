@@ -125,7 +125,20 @@ class BaseStorage(ABC):
         pass
 
     @abstractmethod
-    def open_file(self, path: str) -> BinaryIO:
+    def get_etag(self, path: str) -> str | None:
+        """
+        Get ETag for a file.
+
+        Args:
+            path: Path relative to storage root
+
+        Returns:
+            ETag string or None if not supported
+        """
+        pass
+
+    @abstractmethod
+    def open_file(self, path: str) -> tuple[BinaryIO, str | None]:
         """
         Open a file for reading.
 
@@ -133,7 +146,7 @@ class BaseStorage(ABC):
             path: Path relative to storage root
 
         Returns:
-            A file-like object for reading binary data
+            Tuple of (file-like object, etag or None)
 
         Raises:
             PathNotFoundError: If path does not exist
@@ -340,7 +353,11 @@ class LocalStorage(BaseStorage):
         except InvalidPathError:
             return False
 
-    def open_file(self, path: str) -> BinaryIO:
+    def get_etag(self, path: str) -> str | None:
+        """Local files don't support ETag."""
+        return None
+
+    def open_file(self, path: str) -> tuple[BinaryIO, str | None]:
         target = self._resolve(path)
 
         if not target.exists():
@@ -350,7 +367,7 @@ class LocalStorage(BaseStorage):
             raise NotAFileError("Not a file", path)
 
         try:
-            return open(target, "rb")
+            return open(target, "rb"), None
         except PermissionError:
             raise PermissionDeniedError("Permission denied", path)
 
@@ -698,7 +715,19 @@ class S3Storage(BaseStorage):
         key = self._full_key(path)
         return self._object_exists(key)
 
-    def open_file(self, path: str) -> BinaryIO:
+    def get_etag(self, path: str) -> str | None:
+        """Get ETag for a file using head_object."""
+        self._validate_path(path)
+        if not path:
+            return None
+        key = self._full_key(path)
+        try:
+            response = self.s3.head_object(Bucket=self.bucket, Key=key)
+            return response.get("ETag")
+        except self.s3.exceptions.ClientError:
+            return None
+
+    def open_file(self, path: str) -> tuple[BinaryIO, str | None]:
         self._validate_path(path)
 
         if not path:
@@ -708,7 +737,8 @@ class S3Storage(BaseStorage):
 
         try:
             response = self.s3.get_object(Bucket=self.bucket, Key=key)
-            return response["Body"]
+            etag = response.get("ETag")
+            return response["Body"], etag
         except self.s3.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchKey":
                 raise PathNotFoundError("Path not found", path)

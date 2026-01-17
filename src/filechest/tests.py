@@ -652,9 +652,11 @@ class TestLocalStorage:
         """Test open_file method."""
         (Path(local_storage.root) / "data.txt").write_bytes(b"binary data")
 
-        with local_storage.open_file("data.txt") as f:
+        file_obj, etag = local_storage.open_file("data.txt")
+        with file_obj as f:
             content = f.read()
         assert content == b"binary data"
+        assert etag is None  # LocalStorage doesn't support ETag
 
     def test_open_file_not_found(self, local_storage):
         """Opening non-existent file raises error."""
@@ -872,9 +874,10 @@ class TestS3Storage:
             Bucket=s3_storage.bucket, Key="data.txt", Body=b"binary data"
         )
 
-        f = s3_storage.open_file("data.txt")
-        content = f.read()
+        file_obj, etag = s3_storage.open_file("data.txt")
+        content = file_obj.read()
         assert content == b"binary data"
+        assert etag is not None  # S3 returns ETag
 
     def test_open_file_not_found(self, s3_storage):
         """Opening non-existent file raises error."""

@@ -5,6 +5,7 @@ from pathlib import Path
 from django.http import (
     JsonResponse,
     HttpResponse,
+    HttpResponseNotModified,
     Http404,
     HttpResponseForbidden,
     FileResponse,
@@ -398,7 +399,7 @@ def api_download(request, volume_name: str, filepath: str):
     storage = get_storage(volume)
 
     try:
-        file_obj = storage.open_file(filepath)
+        file_obj, _ = storage.open_file(filepath)
         filename = Path(filepath).name
         return FileResponse(file_obj, as_attachment=True, filename=filename)
     except PathNotFoundError:
@@ -421,10 +422,23 @@ def api_raw(request, volume_name: str, filepath: str):
     storage = get_storage(volume)
 
     try:
-        file_obj = storage.open_file(filepath)
+        # Check If-None-Match (get_etag only when header present)
+        if_none_match = request.headers.get("If-None-Match")
+        if if_none_match:
+            etag = storage.get_etag(filepath)
+            if etag and if_none_match == etag:
+                return HttpResponseNotModified()
+
+        file_obj, etag = storage.open_file(filepath)
         suffix = Path(filepath).suffix.lower()
         mime_type = get_mime_type(suffix)
-        return FileResponse(file_obj, content_type=mime_type)
+        response = FileResponse(file_obj, content_type=mime_type)
+
+        if etag:
+            response["ETag"] = etag
+            response["Cache-Control"] = "private, max-age=0, must-revalidate"
+
+        return response
     except PathNotFoundError:
         raise Http404("File not found")
     except NotAFileError:
