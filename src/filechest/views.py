@@ -408,9 +408,7 @@ def api_raw(request, volume_name: str, filepath: str):
                 return HttpResponseNotModified()
 
         file_obj, etag = storage.open_file(filepath)
-        suffix = Path(filepath).suffix.lower()
-        mime_type = get_mime_type(suffix)
-        response = FileResponse(file_obj, content_type=mime_type)
+        response = FileResponse(file_obj)
 
         if etag:
             response["ETag"] = etag
