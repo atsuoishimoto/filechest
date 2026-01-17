@@ -13,6 +13,7 @@ from django.http import (
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth import logout
 from django.conf import settings as django_settings
 
@@ -94,6 +95,7 @@ def logoutpage(request):
 
 
 @require_GET
+@ensure_csrf_cookie
 def index(request, volume_name: str, subpath: str = ""):
     """Main file manager UI."""
     volume = get_object_or_404(Volume, name=volume_name, is_active=True)
