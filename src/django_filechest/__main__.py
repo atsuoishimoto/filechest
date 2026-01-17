@@ -166,7 +166,18 @@ def main():
         display_path = path
 
     if args.gui:
-        import webview
+        try:
+            import webview
+        except ImportError:
+            print(
+                "Error: GUI mode requires pywebview.\n"
+                "Please install the GUI version:\n"
+                "  Windows/macOS: uv tool install filechest[webview]\n"
+                "  Linux:         uv tool install filechest[gtk]\n\n"
+                "For more details, see: https://github.com/atsuoishimoto/filechest",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         from django_filechest import wsgi
 
         cwd = Path(".").resolve()

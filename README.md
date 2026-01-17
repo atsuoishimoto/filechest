@@ -132,7 +132,7 @@ sudo apt install pkg-config cmake libcairo2-dev libgirepository1.0-dev gir1.2-gt
 
 ## Using as a Django Application
 
-FileChest can be integrated into your Django project as a reusable app, enabling multi-user file management with access control.
+FileChest can also be run as a standard Django web application, enabling multi-user file management with access control.
 
 ### Setup
 
