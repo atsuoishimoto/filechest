@@ -12,7 +12,7 @@ clean:
 	rm -rf dist build
 
 collectstatic:
-	uv run python -m manage collectstatic --noinput
+	uv run python -m manage collectstatic --noinput --clear
 
 build:
 	uv build
