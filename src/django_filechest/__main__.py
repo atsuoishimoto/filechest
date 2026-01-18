@@ -211,7 +211,7 @@ def main():
                 "Error: GUI mode requires pywebview.\n"
                 "Please install the GUI version:\n"
                 "  Windows/macOS: uv tool install filechest[gui]\n"
-                "  Linux(GTK):    uv tool install filechest[gtk]\n\n"
+                "  Linux(GTK):    uv tool install filechest[gtk]\n"
                 "       (Qt):     uv tool install filechest[qt]\n\n"
                 "For more details, see: https://github.com/atsuoishimoto/filechest",
                 file=sys.stderr,
