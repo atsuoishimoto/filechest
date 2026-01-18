@@ -690,18 +690,13 @@ class S3Storage(BaseStorage):
         return self._dir_exists(path)
 
     def is_dir(self, path: str) -> bool:
+        # In S3, directories are implicit and don't need to exist beforehand.
+        # Files can be uploaded to any path, creating the directory structure.
         try:
             self._validate_path(path)
         except InvalidPathError:
             return False
-
-        if not path:
-            return True  # Root is always a directory
-
-        # In S3, a path can be both a file and a directory at the same time
-        # (e.g., "a.txt" as file and "a.txt/b.txt" existing)
-        # Return True if there are any objects with this prefix
-        return self._dir_exists(path)
+        return True
 
     def is_file(self, path: str) -> bool:
         try:
