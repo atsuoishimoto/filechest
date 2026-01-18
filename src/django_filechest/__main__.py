@@ -96,7 +96,16 @@ def main():
     # Create temporary database file
     db_fd, db_path = tempfile.mkstemp(suffix=".sqlite3", prefix="filechest_")
     os.close(db_fd)
-    atexit.register(lambda: os.unlink(db_path) if os.path.exists(db_path) else None)
+
+
+    def cleanup_sqlite():
+        # Windows cannot remove file if the file is not closed
+        from django.db import connections
+        connections.close_all()
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+    atexit.register(cleanup_sqlite)
 
     # Set up Django
     os.environ["FILECHEST_DB_PATH"] = db_path
@@ -292,7 +301,7 @@ def main():
             window = webview.create_window(
                 f"FileChest - {display_path}", url=wsgi.application, text_select=True, zoomable=True
             )
-            webview.start(on_start, window, gui="qt")
+            webview.start(on_start, window)
         finally:
             rmtree(cfg)
 
