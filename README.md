@@ -9,6 +9,11 @@ uvx filechest s3://bucket-name/prefix
 
 No setup required. Just run the command and start browsing.
 
+
+
+<img src="https://raw.githubusercontent.com/atsuoishimoto/filechest/main/screenshot.png" width=400>
+
+
 ## Features
 
 - Browse local directories and S3 buckets
