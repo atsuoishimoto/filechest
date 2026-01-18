@@ -201,8 +201,9 @@ def main():
             print(
                 "Error: GUI mode requires pywebview.\n"
                 "Please install the GUI version:\n"
-                "  Windows/macOS: uv tool install filechest[webview]\n"
-                "  Linux:         uv tool install filechest[gtk]\n\n"
+                "  Windows/macOS: uv tool install filechest[gui]\n"
+                "  Linux(GTK):    uv tool install filechest[gtk]\n\n"
+                "       (Qt):     uv tool install filechest[qt]\n\n"
                 "For more details, see: https://github.com/atsuoishimoto/filechest",
                 file=sys.stderr,
             )
@@ -291,7 +292,7 @@ def main():
             window = webview.create_window(
                 f"FileChest - {display_path}", url=wsgi.application, text_select=True, zoomable=True
             )
-            webview.start(on_start, window)
+            webview.start(on_start, window, gui="qt")
         finally:
             rmtree(cfg)
 

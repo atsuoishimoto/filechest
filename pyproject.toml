@@ -41,7 +41,10 @@ filechest = "django_filechest.__main__:main"
 gtk = [
     "pywebview[gtk]>=6.1",
 ]
-webview = [
+qt = [
+    "pywebview[qt]>=6.1",
+]
+gui = [
     "pywebview>=6.1",
 ]
 

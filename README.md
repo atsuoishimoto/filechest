@@ -121,10 +121,13 @@ Install the appropriate variant for your platform:
 
 ```bash
 # Windows / macOS
-uv tool install filechest[webview]
+uv tool install filechest[gui]
 
 # Linux (GTK)
 uv tool install filechest[gtk]
+
+# Linux (Qt)
+uv tool install filechest[qt]
 ```
 
 #### System Dependencies
@@ -133,9 +136,18 @@ pywebview may require additional system libraries depending on your platform. Se
 
 For example, on **WSL2 Ubuntu 24.04**, the following packages are required:
 
+- for GTK:
+
 ```bash
 sudo apt install pkg-config cmake libcairo2-dev libgirepository1.0-dev gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 ```
+
+- for Qt:
+
+```bash
+sudo apt install -y qt6-base-dev qt6-wayland
+```
+
 
 ---
 
