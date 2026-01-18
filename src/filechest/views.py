@@ -1,4 +1,5 @@
 import json
+import mimetypes
 import secrets
 from pathlib import Path
 
@@ -8,7 +9,7 @@ from django.http import (
     HttpResponseNotModified,
     Http404,
     HttpResponseForbidden,
-    FileResponse,
+    StreamingHttpResponse,
 )
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST
@@ -409,8 +410,12 @@ def api_raw(request, volume_name: str, filepath: str):
             if etag and if_none_match == etag:
                 return HttpResponseNotModified()
 
-        file_obj, etag = storage.open_file(filepath)
-        response = FileResponse(file_obj)
+        file_obj, etag, size = storage.open_file(filepath)
+
+        response = StreamingHttpResponse(file_obj)
+        response["Content-Length"] = size
+        content_type, _ = mimetypes.guess_type(filepath)
+        response["Content-Type"] = content_type
 
         if etag:
             response["ETag"] = etag

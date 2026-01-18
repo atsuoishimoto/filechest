@@ -52,3 +52,4 @@ DATABASES = {
 
 # Adhoc mode: all users get editor access without authentication
 FILECHEST_ADHOC_MODE = True
+SESSION_COOKIE_NAME = "filechest_adhoc_session"

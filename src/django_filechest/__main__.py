@@ -97,10 +97,10 @@ def main():
     db_fd, db_path = tempfile.mkstemp(suffix=".sqlite3", prefix="filechest_")
     os.close(db_fd)
 
-
     def cleanup_sqlite():
         # Windows cannot remove file if the file is not closed
         from django.db import connections
+
         connections.close_all()
         if os.path.exists(db_path):
             os.unlink(db_path)
@@ -299,7 +299,10 @@ def main():
             webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
 
             window = webview.create_window(
-                f"FileChest - {display_path}", url=wsgi.application, text_select=True, zoomable=True
+                f"FileChest - {display_path}",
+                url=wsgi.application,
+                text_select=True,
+                zoomable=True,
             )
             webview.start(on_start, window)
         finally:

@@ -138,7 +138,7 @@ class BaseStorage(ABC):
         pass
 
     @abstractmethod
-    def open_file(self, path: str) -> tuple[BinaryIO, str | None]:
+    def open_file(self, path: str) -> tuple[BinaryIO, str | None, int]:
         """
         Open a file for reading.
 
@@ -146,7 +146,7 @@ class BaseStorage(ABC):
             path: Path relative to storage root
 
         Returns:
-            Tuple of (file-like object, etag or None)
+            Tuple of (file-like object, etag or None, file size in bytes)
 
         Raises:
             PathNotFoundError: If path does not exist
@@ -357,7 +357,7 @@ class LocalStorage(BaseStorage):
         """Local files don't support ETag."""
         return None
 
-    def open_file(self, path: str) -> tuple[BinaryIO, str | None]:
+    def open_file(self, path: str) -> tuple[BinaryIO, str | None, int]:
         target = self._resolve(path)
 
         if not target.exists():
@@ -367,7 +367,8 @@ class LocalStorage(BaseStorage):
             raise NotAFileError("Not a file", path)
 
         try:
-            return open(target, "rb"), None
+            size = target.stat().st_size
+            return open(target, "rb"), None, size
         except PermissionError:
             raise PermissionDeniedError("Permission denied", path)
 
@@ -722,7 +723,7 @@ class S3Storage(BaseStorage):
         except self.s3.exceptions.ClientError:
             return None
 
-    def open_file(self, path: str) -> tuple[BinaryIO, str | None]:
+    def open_file(self, path: str) -> tuple[BinaryIO, str | None, int]:
         self._validate_path(path)
 
         if not path:
@@ -733,7 +734,8 @@ class S3Storage(BaseStorage):
         try:
             response = self.s3.get_object(Bucket=self.bucket, Key=key)
             etag = response.get("ETag")
-            return response["Body"], etag
+            size = response.get("ContentLength", 0)
+            return response["Body"], etag, size
         except self.s3.exceptions.ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchKey":
                 raise PathNotFoundError("Path not found", path)

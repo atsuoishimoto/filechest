@@ -15,9 +15,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_filechest.settings")
 
 application = get_wsgi_application()
 
-#from django.core.handlers.wsgi import WSGIHandler
+# from django.core.handlers.wsgi import WSGIHandler
 #
-#class FileChestWSGIHandler(WSGIHandler):
+# class FileChestWSGIHandler(WSGIHandler):
 #    def __call__(self, environ, start_response):
 #        ret = super().__call__(environ, start_response)
 #        print(
@@ -29,4 +29,4 @@ application = get_wsgi_application()
 #        )
 #        return ret
 #
-#application = FileChestWSGIHandler()
+# application = FileChestWSGIHandler()

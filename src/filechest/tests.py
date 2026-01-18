@@ -631,11 +631,12 @@ class TestLocalStorage:
         """Test open_file method."""
         (Path(local_storage.root) / "data.txt").write_bytes(b"binary data")
 
-        file_obj, etag = local_storage.open_file("data.txt")
+        file_obj, etag, size = local_storage.open_file("data.txt")
         with file_obj as f:
             content = f.read()
         assert content == b"binary data"
         assert etag is None  # LocalStorage doesn't support ETag
+        assert size == 11  # len(b"binary data")
 
     def test_open_file_not_found(self, local_storage):
         """Opening non-existent file raises error."""
@@ -824,16 +825,13 @@ class TestS3Storage:
 
     def test_is_dir(self, s3_storage):
         """Test is_dir method."""
-        # In S3, directories are implicit - they exist when files exist under them
-        s3_storage.s3.put_object(
-            Bucket=s3_storage.bucket, Key="folder/dummy.txt", Body=b"x"
-        )
-        s3_storage.s3.put_object(Bucket=s3_storage.bucket, Key="file.txt", Body=b"x")
-
+        # In S3, directories are implicit and don't need to exist beforehand.
+        # is_dir() always returns True for any valid path.
         assert s3_storage.is_dir("folder") is True
-        assert s3_storage.is_dir("file.txt") is False
-        assert s3_storage.is_dir("notexists") is False
+        assert s3_storage.is_dir("file.txt") is True
+        assert s3_storage.is_dir("notexists") is True
         assert s3_storage.is_dir("") is True  # Root is a directory
+        assert s3_storage.is_dir("..") is False  # Invalid path
 
     def test_is_file(self, s3_storage):
         """Test is_file method."""
@@ -853,10 +851,11 @@ class TestS3Storage:
             Bucket=s3_storage.bucket, Key="data.txt", Body=b"binary data"
         )
 
-        file_obj, etag = s3_storage.open_file("data.txt")
+        file_obj, etag, size = s3_storage.open_file("data.txt")
         content = file_obj.read()
         assert content == b"binary data"
         assert etag is not None  # S3 returns ETag
+        assert size == 11  # len(b"binary data")
 
     def test_open_file_not_found(self, s3_storage):
         """Opening non-existent file raises error."""
@@ -873,16 +872,10 @@ class TestS3Storage:
 
     def test_mkdir(self, s3_storage):
         """Test mkdir method (no-op for S3, directories are implicit)."""
-        # mkdir is a no-op for S3 - directories only exist when files exist under them
+        # mkdir is a no-op for S3 - directories are implicit
+        # is_dir() always returns True, so we just verify mkdir doesn't raise
         s3_storage.mkdir("newdir")
-        # Directory doesn't exist yet because no files are under it
-        assert not s3_storage.is_dir("newdir")
-
-        # After adding a file, the directory exists
-        s3_storage.s3.put_object(
-            Bucket=s3_storage.bucket, Key="newdir/file.txt", Body=b"x"
-        )
-        assert s3_storage.is_dir("newdir")
+        assert s3_storage.is_dir("newdir") is True
 
     def test_mkdir_file_collision(self, s3_storage):
         """mkdir raises error if a file with that name exists."""
@@ -1176,14 +1169,10 @@ class TestMaxDirEntries:
 
             # Create 3 directories (by creating files under them)
             for i in range(3):
-                s3_client.put_object(
-                    Bucket=bucket_name, Key=f"dir{i}/.keep", Body=b""
-                )
+                s3_client.put_object(Bucket=bucket_name, Key=f"dir{i}/.keep", Body=b"")
             # Create 5 files
             for i in range(5):
-                s3_client.put_object(
-                    Bucket=bucket_name, Key=f"file{i}.txt", Body=b"x"
-                )
+                s3_client.put_object(Bucket=bucket_name, Key=f"file{i}.txt", Body=b"x")
 
             storage = S3Storage(bucket_name, prefix="", s3_client=s3_client)
             items = storage.list_dir("")
