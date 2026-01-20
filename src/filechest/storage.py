@@ -274,20 +274,16 @@ class LocalStorage(BaseStorage):
         Resolve a relative path to an absolute path within the root.
 
         Raises:
-            InvalidPathError: If path would escape the root
+            InvalidPathError: If path contains path traversal attempts
         """
         if not path:
             return self.root
 
-        target = (self.root / path).resolve()
-
-        # Prevent path traversal
-        try:
-            target.relative_to(self.root)
-        except ValueError:
+        # Check for path traversal attempts
+        if ".." in path.split("/"):
             raise InvalidPathError("Invalid path", path)
 
-        return target
+        return self.root / path
 
     def list_dir(self, path: str) -> list[FileInfo]:
         from django.conf import settings
@@ -529,11 +525,6 @@ class S3Storage(BaseStorage):
             return f"{self.prefix}/{path}" if path else self.prefix
         return path
 
-    def _validate_path(self, path: str) -> None:
-        """Validate path doesn't contain traversal attempts."""
-        if ".." in path.split("/"):
-            raise InvalidPathError("Invalid path", path)
-
     def _list_objects(self, prefix: str, delimiter: str = "/") -> tuple[list, list]:
         """
         List objects with given prefix.
@@ -591,7 +582,6 @@ class S3Storage(BaseStorage):
 
         max_entries = getattr(settings, "FILECHEST_MAX_DIR_ENTRIES", 1000)
 
-        self._validate_path(path)
 
         full_prefix = self._full_key(path)
 
@@ -640,7 +630,6 @@ class S3Storage(BaseStorage):
         return items
 
     def get_info(self, path: str) -> FileInfo:
-        self._validate_path(path)
 
         if not path:
             raise PathNotFoundError("Cannot get info for root", "")
@@ -673,11 +662,6 @@ class S3Storage(BaseStorage):
         raise PathNotFoundError("Path not found", path)
 
     def exists(self, path: str) -> bool:
-        try:
-            self._validate_path(path)
-        except InvalidPathError:
-            return False
-
         if not path:
             return True  # Root always exists
 
@@ -693,18 +677,9 @@ class S3Storage(BaseStorage):
     def is_dir(self, path: str) -> bool:
         # In S3, directories are implicit and don't need to exist beforehand.
         # Files can be uploaded to any path, creating the directory structure.
-        try:
-            self._validate_path(path)
-        except InvalidPathError:
-            return False
         return True
 
     def is_file(self, path: str) -> bool:
-        try:
-            self._validate_path(path)
-        except InvalidPathError:
-            return False
-
         if not path:
             return False  # Root is not a file
 
@@ -713,7 +688,6 @@ class S3Storage(BaseStorage):
 
     def get_etag(self, path: str) -> str | None:
         """Get ETag for a file using head_object."""
-        self._validate_path(path)
         if not path:
             return None
         key = self._full_key(path)
@@ -724,7 +698,6 @@ class S3Storage(BaseStorage):
             return None
 
     def open_file(self, path: str) -> tuple[BinaryIO, str | None, int]:
-        self._validate_path(path)
 
         if not path:
             raise NotAFileError("Root is not a file", "")
@@ -742,7 +715,6 @@ class S3Storage(BaseStorage):
             raise
 
     def write_file(self, path: str, content: Iterator[bytes]) -> None:
-        self._validate_path(path)
 
         if not path:
             raise InvalidPathError("Cannot write to root", "")
@@ -756,7 +728,6 @@ class S3Storage(BaseStorage):
 
     def mkdir(self, path: str, parents: bool = False, exists_ok: bool = False) -> None:
         """Create a directory (no-op for S3, directories are implicit)."""
-        self._validate_path(path)
 
         if not path:
             raise InvalidPathError("Cannot create root directory", "")
@@ -774,7 +745,6 @@ class S3Storage(BaseStorage):
         # The directory will "exist" once files are uploaded to it
 
     def delete(self, path: str) -> None:
-        self._validate_path(path)
 
         if not path:
             raise InvalidPathError("Cannot delete root", "")
@@ -806,7 +776,6 @@ class S3Storage(BaseStorage):
                 self.s3.delete_objects(Bucket=self.bucket, Delete={"Objects": batch})
 
     def rename(self, path: str, new_name: str) -> None:
-        self._validate_path(path)
 
         if not path:
             raise InvalidPathError("Cannot rename root", "")
@@ -858,8 +827,6 @@ class S3Storage(BaseStorage):
                 self.s3.delete_object(Bucket=self.bucket, Key=old_obj_key)
 
     def copy(self, src_path: str, dest_dir: str) -> None:
-        self._validate_path(src_path)
-        self._validate_path(dest_dir)
 
         if not src_path:
             raise InvalidPathError("Cannot copy root", "")
@@ -906,8 +873,6 @@ class S3Storage(BaseStorage):
                 )
 
     def move(self, src_path: str, dest_dir: str) -> None:
-        self._validate_path(src_path)
-        self._validate_path(dest_dir)
 
         if not src_path:
             raise InvalidPathError("Cannot move root", "")

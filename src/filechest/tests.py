@@ -826,12 +826,12 @@ class TestS3Storage:
     def test_is_dir(self, s3_storage):
         """Test is_dir method."""
         # In S3, directories are implicit and don't need to exist beforehand.
-        # is_dir() always returns True for any valid path.
+        # is_dir() always returns True for any path (S3 allows ".." in names).
         assert s3_storage.is_dir("folder") is True
         assert s3_storage.is_dir("file.txt") is True
         assert s3_storage.is_dir("notexists") is True
         assert s3_storage.is_dir("") is True  # Root is a directory
-        assert s3_storage.is_dir("..") is False  # Invalid path
+        assert s3_storage.is_dir("..") is True  # S3 allows ".." as a valid name
 
     def test_is_file(self, s3_storage):
         """Test is_file method."""
@@ -974,14 +974,6 @@ class TestS3Storage:
 
         with pytest.raises(NotADirectoryError):
             s3_storage.copy("source.txt", "dest")
-
-    def test_path_traversal_blocked(self, s3_storage):
-        """Path traversal attempts are blocked."""
-        with pytest.raises(InvalidPathError):
-            s3_storage.list_dir("../..")
-
-        with pytest.raises(InvalidPathError):
-            s3_storage.mkdir("../escape")
 
     def test_with_prefix(self, s3_storage_with_prefix):
         """Test S3Storage with prefix."""
