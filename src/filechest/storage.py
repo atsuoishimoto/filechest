@@ -75,6 +75,31 @@ class NotAFileError(StorageError):
 class BaseStorage(ABC):
     """Abstract base class for storage backends."""
 
+    def normalize_path(self, path: str) -> str:
+        """
+        Normalize path for this storage backend.
+
+        Default implementation returns the path unchanged.
+        Subclasses may override to handle platform-specific path separators.
+        """
+        return path
+
+    def validate_name(self, name: str) -> str | None:
+        """
+        Validate file/folder name.
+
+        Returns error message if invalid, None if valid.
+        """
+        if not name:
+            return "Name is required"
+        if "/" in name or "\\" in name:
+            return "Name cannot contain slashes"
+        if name in (".", ".."):
+            return "Invalid name"
+        if name.startswith("."):
+            return "Name cannot start with a dot"
+        return None
+
     @abstractmethod
     def list_dir(self, path: str) -> list[FileInfo]:
         """
@@ -268,6 +293,10 @@ class LocalStorage(BaseStorage):
         self.root = Path(root_path).resolve()
         if not self.root.is_dir():
             raise ValueError(f"Root path is not a directory: {root_path}")
+
+    def normalize_path(self, path: str) -> str:
+        """Normalize path by converting backslashes to forward slashes."""
+        return path.replace("\\", "/")
 
     def _resolve(self, path: str) -> Path:
         """
@@ -517,6 +546,10 @@ class S3Storage(BaseStorage):
         self.bucket = bucket
         self.prefix = prefix.strip("/") if prefix else ""
         self.s3 = s3_client or boto3.client("s3")
+
+    def validate_name(self, name: str) -> str | None:
+        """S3 allows any characters in object keys."""
+        return None
 
     def _full_key(self, path: str) -> str:
         """Get full S3 key from relative path."""

@@ -44,24 +44,6 @@ def get_volume_and_check_edit(
     return volume, None
 
 
-def validate_name(name: str) -> str | None:
-    """Validate file/folder name. Returns error message or None if valid."""
-    if not name:
-        return "Name is required"
-    if "/" in name or "\\" in name:
-        return "Name cannot contain slashes"
-    if name in (".", ".."):
-        return "Invalid name"
-    if name.startswith("."):
-        return "Name cannot start with a dot"
-    return None
-
-
-def normalize_path(path: str) -> str:
-    """Normalize path separators (convert backslash to forward slash)."""
-    return path.replace("\\", "/")
-
-
 # =============================================================================
 # UI Views
 # =============================================================================
@@ -341,12 +323,15 @@ def api_list(request, volume_name: str, subpath: str = ""):
         return JsonResponse({"error": "Access denied"}, status=403)
 
     storage = get_storage(volume)
+    subpath = storage.normalize_path(subpath)
 
     try:
         if not storage.is_dir(subpath):
             return JsonResponse({"error": "Not a directory"}, status=400)
 
         file_list = storage.list_dir(subpath)
+    except InvalidPathError:
+        return JsonResponse({"error": "Invalid path"}, status=400)
     except PathNotFoundError:
         return JsonResponse({"error": "Path not found"}, status=404)
     except PermissionDeniedError:
@@ -401,6 +386,7 @@ def api_raw(request, volume_name: str, filepath: str):
         return HttpResponseForbidden("Access denied")
 
     storage = get_storage(volume)
+    filepath = storage.normalize_path(filepath)
 
     try:
         # Check If-None-Match (get_etag only when header present)
@@ -422,6 +408,8 @@ def api_raw(request, volume_name: str, filepath: str):
             response["Cache-Control"] = "private, max-age=0, must-revalidate"
 
         return response
+    except InvalidPathError:
+        return HttpResponse("Invalid path", status=400)
     except PathNotFoundError:
         raise Http404("File not found")
     except NotAFileError:
@@ -447,16 +435,16 @@ def api_mkdir(request, volume_name: str):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    path = normalize_path(data.get("path", ""))
+    storage = get_storage(volume)
+
+    path = storage.normalize_path(data.get("path", ""))
     name = data.get("name", "")
     parents = data.get("parents", False)
     exists_ok = data.get("exists_ok", False)
 
     # Validate name
-    if err := validate_name(name):
+    if err := storage.validate_name(name):
         return JsonResponse({"error": err}, status=400)
-
-    storage = get_storage(volume)
 
     # Build full path for new folder
     new_path = f"{path}/{name}".strip("/") if path else name
@@ -489,11 +477,11 @@ def api_delete(request, volume_name: str):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    items = [normalize_path(item) for item in data.get("items", [])]
+    storage = get_storage(volume)
+
+    items = [storage.normalize_path(item) for item in data.get("items", [])]
     if not items:
         return JsonResponse({"error": "No items specified"}, status=400)
-
-    storage = get_storage(volume)
     deleted = []
     errors = []
 
@@ -525,17 +513,17 @@ def api_rename(request, volume_name: str):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    path = normalize_path(data.get("path", ""))
+    storage = get_storage(volume)
+
+    path = storage.normalize_path(data.get("path", ""))
     new_name = data.get("new_name", "")
 
     if not path:
         return JsonResponse({"error": "Path is required"}, status=400)
 
     # Validate new name
-    if err := validate_name(new_name):
+    if err := storage.validate_name(new_name):
         return JsonResponse({"error": err}, status=400)
-
-    storage = get_storage(volume)
 
     try:
         storage.rename(path, new_name)
@@ -560,9 +548,9 @@ def api_upload(request, volume_name: str):
     if error:
         return error
 
-    path = normalize_path(request.POST.get("path", ""))
-
     storage = get_storage(volume)
+
+    path = storage.normalize_path(request.POST.get("path", ""))
 
     # Check target directory exists
     if path and not storage.is_dir(path):
@@ -574,7 +562,7 @@ def api_upload(request, volume_name: str):
     if relative_paths_json:
         try:
             relative_paths = [
-                normalize_path(p) for p in json.loads(relative_paths_json)
+                storage.normalize_path(p) for p in json.loads(relative_paths_json)
             ]
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid relative_paths JSON"}, status=400)
@@ -590,7 +578,7 @@ def api_upload(request, volume_name: str):
             # Validate each component of the path
             parts = rel_path.split("/")
             for part in parts:
-                if err := validate_name(part):
+                if err := storage.validate_name(part):
                     errors.append({"file": rel_path, "error": err})
                     break
             else:
@@ -603,7 +591,7 @@ def api_upload(request, volume_name: str):
             rel_path = f.name
             display_name = f.name
             # Validate filename
-            if err := validate_name(f.name):
+            if err := storage.validate_name(f.name):
                 errors.append({"file": f.name, "error": err})
                 continue
 
@@ -645,13 +633,13 @@ def api_copy(request, volume_name: str):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    items = [normalize_path(item) for item in data.get("items", [])]
-    dest_path = normalize_path(data.get("destination", ""))
+    storage = get_storage(volume)
+
+    items = [storage.normalize_path(item) for item in data.get("items", [])]
+    dest_path = storage.normalize_path(data.get("destination", ""))
 
     if not items:
         return JsonResponse({"error": "No items specified"}, status=400)
-
-    storage = get_storage(volume)
 
     # Check destination is a directory
     if not storage.is_dir(dest_path):
@@ -688,13 +676,13 @@ def api_move(request, volume_name: str):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    items = [normalize_path(item) for item in data.get("items", [])]
-    dest_path = normalize_path(data.get("destination", ""))
+    storage = get_storage(volume)
+
+    items = [storage.normalize_path(item) for item in data.get("items", [])]
+    dest_path = storage.normalize_path(data.get("destination", ""))
 
     if not items:
         return JsonResponse({"error": "No items specified"}, status=400)
-
-    storage = get_storage(volume)
 
     # Check destination is a directory
     if not storage.is_dir(dest_path):
