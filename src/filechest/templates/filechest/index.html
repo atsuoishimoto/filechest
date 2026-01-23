@@ -464,6 +464,11 @@
             const moveBtn = document.getElementById('btn-move-here');
             const clearBtn = document.getElementById('btn-clear-marks');
 
+            // In view mode, clipboard buttons don't exist
+            if (!copyBtn || !moveBtn || !clearBtn) {
+                return;
+            }
+
             if (clipboard && clipboard.items.length > 0) {
                 const count = clipboard.items.length;
                 // Check if any marked item is in the current directory
