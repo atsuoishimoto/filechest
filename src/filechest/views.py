@@ -15,6 +15,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.cache import never_cache
 from django.contrib.auth import logout
 from django.conf import settings as django_settings
 
@@ -50,6 +51,7 @@ def get_volume_and_check_edit(
 
 
 @require_GET
+@never_cache
 def home(request):
     """Home page showing available volumes."""
     all_volumes = Volume.objects.filter(is_active=True)
@@ -79,6 +81,7 @@ def logoutpage(request):
 
 @require_GET
 @ensure_csrf_cookie
+@never_cache
 def index(request, volume_name: str, subpath: str = ""):
     """Main file manager UI."""
     volume = get_object_or_404(Volume, name=volume_name, is_active=True)
@@ -141,16 +144,16 @@ def index(request, volume_name: str, subpath: str = ""):
         "session_storage_key": SESSION_STORAGE_KEY,
     }
     try:
-        ret = render(request, "filechest/index.html", context)
+        return render(request, "filechest/index.html", context)
     except Exception:
         import traceback
 
         traceback.print_exc()
         raise
-    return ret
 
 
 @require_GET
+@never_cache
 def preview(request, volume_name: str, filepath: str):
     """File preview page."""
     volume = get_object_or_404(Volume, name=volume_name, is_active=True)
@@ -315,6 +318,7 @@ def get_mime_type(suffix: str) -> str:
 
 
 @require_GET
+@never_cache
 def api_list(request, volume_name: str, subpath: str = ""):
     """API: List directory contents."""
     volume = get_object_or_404(Volume, name=volume_name, is_active=True)
@@ -406,6 +410,8 @@ def api_raw(request, volume_name: str, filepath: str):
         if etag:
             response["ETag"] = etag
             response["Cache-Control"] = "private, max-age=0, must-revalidate"
+        else:
+            response["Cache-Control"] = "private"
 
         return response
     except InvalidPathError:

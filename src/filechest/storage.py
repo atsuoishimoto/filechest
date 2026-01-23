@@ -7,9 +7,30 @@ allowing different storage backends (local filesystem, S3, etc.).
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import BinaryIO, Iterator
+import hashlib
 import shutil
+
+
+@lru_cache(maxsize=1000)
+def _compute_file_sha256(path: str, mtime: float) -> str:
+    """
+    Compute SHA256 hash of a file. Cached by path and mtime.
+
+    Args:
+        path: Absolute file path
+        mtime: File modification time (used for cache invalidation)
+
+    Returns:
+        ETag string in the format '"<sha256>"'
+    """
+    sha256 = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256.update(chunk)
+    return f'"{sha256.hexdigest()}"'
 
 
 @dataclass
@@ -379,8 +400,17 @@ class LocalStorage(BaseStorage):
             return False
 
     def get_etag(self, path: str) -> str | None:
-        """Local files don't support ETag."""
-        return None
+        """Get ETag for a file using SHA256 hash."""
+        target = self._resolve(path)
+
+        if not target.is_file():
+            return None
+
+        try:
+            mtime = target.stat().st_mtime
+            return _compute_file_sha256(str(target), mtime)
+        except (OSError, PermissionError):
+            return None
 
     def open_file(self, path: str) -> tuple[BinaryIO, str | None, int]:
         target = self._resolve(path)
@@ -392,8 +422,10 @@ class LocalStorage(BaseStorage):
             raise NotAFileError("Not a file", path)
 
         try:
-            size = target.stat().st_size
-            return open(target, "rb"), None, size
+            stat = target.stat()
+            size = stat.st_size
+            etag = _compute_file_sha256(str(target), stat.st_mtime)
+            return open(target, "rb"), etag, size
         except PermissionError:
             raise PermissionDeniedError("Permission denied", path)
 
