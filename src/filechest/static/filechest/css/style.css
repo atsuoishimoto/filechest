@@ -639,6 +639,11 @@ body {
     cursor: pointer;
 }
 
+.modal-buttons button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .modal-buttons .btn-cancel {
     background: var(--color-border-light);
 }
