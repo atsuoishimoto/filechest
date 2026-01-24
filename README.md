@@ -64,7 +64,7 @@ The command starts a web server and opens your browser automatically.
 ### Command Line Options
 
 ```
-usage: filechest [-h] [-p PORT] [--no-browser] [-g] [-a AWS_PROFILE]
+usage: filechest [-h] [-b BIND] [-p PORT] [--no-browser] [-g] [-a AWS_PROFILE]
                  [--max-buckets MAX_BUCKETS] [--max-entries MAX_ENTRIES]
                  path
 
@@ -75,6 +75,7 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
+  -b, --bind BIND       Address to bind to (default: 127.0.0.1)
   -p, --port PORT       Port to run the server on (default: 8000)
   --no-browser          Do not open browser automatically
   -g, --gui             Open GUI window (Experimental)

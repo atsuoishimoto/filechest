@@ -42,6 +42,12 @@ parser.add_argument(
     help='Path to directory, S3 URL (s3://bucket/prefix), or "s3://" to list all buckets',
 )
 parser.add_argument(
+    "-b",
+    "--bind",
+    default="127.0.0.1",
+    help="Address to bind to (default: 127.0.0.1)",
+)
+parser.add_argument(
     "-p",
     "--port",
     type=int,
@@ -163,7 +169,7 @@ def main():
         if is_s3_bucket_list_mode(path):
             # Open home page showing all buckets
             page = ""
-            url = f"http://127.0.0.1:{args.port}/"
+            url = f"http://{args.bind}:{args.port}/"
             display_path = "S3 (all buckets)"
         else:
             # Open the specified bucket (with optional prefix as subpath)
@@ -181,7 +187,7 @@ def main():
                 page = f"{volume_name}/browse/{prefix}/"
             else:
                 page = f"{volume_name}/"
-                url = f"http://127.0.0.1:{args.port}/{volume_name}/"
+                url = f"http://{args.bind}:{args.port}/{volume_name}/"
             display_path = path
 
     else:
@@ -200,7 +206,7 @@ def main():
             public_read=True,
         )
         page = f"{volume_name}/"
-        url = f"http://127.0.0.1:{args.port}/{volume_name}/"
+        url = f"http://{args.bind}:{args.port}/{volume_name}/"
         display_path = path
 
     if args.gui:
@@ -310,7 +316,7 @@ def main():
 
     else:
         # Open browser after a short delay
-        url = f"http://127.0.0.1:{args.port}/{page}"
+        url = f"http://{args.bind}:{args.port}/{page}"
         if not args.no_browser:
 
             def open_browser():
@@ -327,7 +333,7 @@ def main():
         from django.core.management import execute_from_command_line
 
         execute_from_command_line(
-            ["manage.py", "runserver", str(args.port), "--noreload"]
+            ["manage.py", "runserver", f"{args.bind}:{args.port}", "--noreload"]
         )
 
 
