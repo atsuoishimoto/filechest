@@ -53,7 +53,6 @@
             <button onclick="showNewFolderModal()">📁 New Folder</button>
             {% endif %}
             <span class="spacer"></span>
-            <button id="btn-rename" onclick="showRenameModal()" disabled>✏️ Rename</button>
             <button id="btn-mark" onclick="markItems()" disabled>📌 Mark</button>
             <button id="btn-delete" onclick="showDeleteModal()" disabled>🗑️ Delete</button>
             <span class="separator">|</span>
@@ -110,6 +109,13 @@
                     </div>
                     <span class="file-name">{{ item.name }}</span>
                 </a>
+                {% if can_edit %}
+                <span class="file-actions">
+                    {% if not volume.is_s3 or not item.is_dir %}
+                    <button class="btn-rename" onclick="showRenameModal('{{ item.name|escapejs }}')" title="Rename">✏️</button>
+                    {% endif %}
+                </span>
+                {% endif %}
                 <span class="file-size">
                     {% if item.is_dir %}-{% else %}{{ item.size|filesizeformat }}{% endif %}
                 </span>
@@ -274,7 +280,6 @@
 
             document.getElementById('btn-delete').disabled = !hasSelection || s3FolderSelected;
             document.getElementById('btn-mark').disabled = !hasSelection;
-            document.getElementById('btn-rename').disabled = !singleSelection || s3FolderSelected;
 
             document.querySelectorAll('.file-item').forEach(item => {
                 const checkbox = item.querySelector('.file-checkbox');
@@ -374,29 +379,30 @@
             }
         }
 
-        function showRenameModal() {
-            const selected = document.querySelector('.file-item.selected');
-            if (!selected) return;
+        let renameTargetName = null;
 
-            document.getElementById('rename-name').value = selected.dataset.name;
+        function showRenameModal(itemName) {
+            renameTargetName = itemName;
+            document.getElementById('rename-name').value = itemName;
             showModal('modal-rename');
             document.getElementById('rename-name').focus();
         }
 
         async function renameItem() {
-            const selected = document.querySelector('.file-item.selected');
-            if (!selected) return;
+            if (!renameTargetName) return;
 
-            const oldName = selected.dataset.name;
+            const oldName = renameTargetName;
             const newName = document.getElementById('rename-name').value.trim();
             if (!newName || newName === oldName) {
                 closeModal('modal-rename');
+                renameTargetName = null;
                 return;
             }
 
             const path = currentPath ? `${currentPath}/${oldName}` : oldName;
             const result = await apiCall('rename', { path, new_name: newName });
             closeModal('modal-rename');
+            renameTargetName = null;
 
             if (result.success) {
                 showToast(`Renamed to "${newName}"`);

@@ -13,7 +13,7 @@
         </div>
 
         <div class="file-header">
-            <h2>{{ filename }}</h2>
+            <h2>{{ filename }}{% if can_edit %} <button class="btn-rename-inline" onclick="showRenameModal()" title="Rename">✏️</button>{% endif %}</h2>
             <div class="header-actions">
                 {% if parent_path %}
                 <a href="{% url 'filechest:browse' volume.name parent_path %}" class="btn-back">Back</a>
@@ -81,6 +81,23 @@
             {% endif %}
         </div>
     </div>
+
+    {% if can_edit %}
+    <!-- Rename Modal -->
+    <div id="modal-rename" class="modal">
+        <div class="modal-content">
+            <h3>Rename</h3>
+            <input type="text" id="rename-name" placeholder="New name">
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal('modal-rename')">Cancel</button>
+                <button class="btn-ok" onclick="renameItem()">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+    {% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -100,6 +117,87 @@
                 container.textContent = 'Failed to load file content.';
             }
         })();
+    </script>
+    {% endif %}
+
+    {% if can_edit %}
+    <script>
+        const volumeName = "{{ volume.name }}";
+        const filepath = "{{ filepath|escapejs }}";
+        const filename = "{{ filename|escapejs }}";
+        const parentPath = "{{ parent_path|escapejs }}";
+        const apiBase = "{% url 'filechest:api_list' volume.name %}".replace(/list\/$/, '');
+
+        function getCsrfToken() {
+            const cookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+            return cookie ? cookie.split('=')[1] : '';
+        }
+
+        async function apiCall(endpoint, data) {
+            const response = await fetch(`${apiBase}${endpoint}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify(data)
+            });
+            return response.json();
+        }
+
+        function showModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} active`;
+            setTimeout(() => toast.classList.remove('active'), 5000);
+        }
+
+        function showRenameModal() {
+            document.getElementById('rename-name').value = filename;
+            showModal('modal-rename');
+            document.getElementById('rename-name').focus();
+        }
+
+        async function renameItem() {
+            const newName = document.getElementById('rename-name').value.trim();
+            if (!newName || newName === filename) {
+                closeModal('modal-rename');
+                return;
+            }
+
+            const result = await apiCall('rename', { path: filepath, new_name: newName });
+            closeModal('modal-rename');
+
+            if (result.success) {
+                // Redirect to the new file path
+                const newPath = parentPath ? `${parentPath}/${newName}` : newName;
+                window.location.href = "{% url 'filechest:preview' volume.name 'PLACEHOLDER' %}".replace('PLACEHOLDER', encodeURIComponent(newPath).replace(/%2F/g, '/'));
+            } else {
+                showToast(result.error || 'Rename failed', 'error');
+            }
+        }
+
+        // Enter key for modal
+        document.getElementById('rename-name')?.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') renameItem();
+        });
+
+        // Escape key to close modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.active').forEach(modal => {
+                    closeModal(modal.id);
+                });
+            }
+        });
     </script>
     {% endif %}
 {% endblock %}
