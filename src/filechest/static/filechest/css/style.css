@@ -895,6 +895,15 @@ body {
     background: var(--color-border-dark);
 }
 
+.btn-copy {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.btn-copy:hover {
+    background: var(--color-border-dark);
+}
+
 .btn-download {
     background: var(--color-primary);
     color: white;

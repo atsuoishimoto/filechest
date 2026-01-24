@@ -20,6 +20,9 @@
                 {% else %}
                 <a href="{% url 'filechest:index' volume.name %}" class="btn-back">Back</a>
                 {% endif %}
+                {% if preview_type == 'text' or preview_type == 'image' %}
+                <button id="btn-copy" class="btn-copy" onclick="copyToClipboard()">📋 Copy</button>
+                {% endif %}
                 <a href="{% url 'filechest:api_raw' volume.name filepath %}" class="btn-download" download>Download</a>
             </div>
         </div>
@@ -82,6 +85,9 @@
         </div>
     </div>
 
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
     {% if can_edit %}
     <!-- Rename Modal -->
     <div id="modal-rename" class="modal">
@@ -94,21 +100,30 @@
             </div>
         </div>
     </div>
-
-    <!-- Toast -->
-    <div id="toast" class="toast"></div>
     {% endif %}
 {% endblock %}
 
 {% block extra_js %}
+    <script>
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} active`;
+            setTimeout(() => toast.classList.remove('active'), 5000);
+        }
+    </script>
+
     {% if preview_type == 'text' %}
     <script>
+        let textContent = null;
+
         (async function() {
             const container = document.getElementById('text-content');
             try {
                 const response = await fetch("{% url 'filechest:api_raw' volume.name filepath %}");
                 if (!response.ok) throw new Error('Failed to load');
                 const text = await response.text();
+                textContent = text;
                 const pre = document.createElement('pre');
                 pre.textContent = text;
                 container.innerHTML = '';
@@ -117,6 +132,55 @@
                 container.textContent = 'Failed to load file content.';
             }
         })();
+
+        async function copyToClipboard() {
+            if (!textContent) {
+                showToast('Content not loaded yet', 'error');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(textContent);
+                showToast('Copied to clipboard');
+            } catch (e) {
+                showToast('Failed to copy', 'error');
+            }
+        }
+    </script>
+    {% elif preview_type == 'image' %}
+    <script>
+        async function copyToClipboard() {
+            const img = document.querySelector('.preview-image img');
+            if (!img) {
+                showToast('Image not found', 'error');
+                return;
+            }
+            try {
+                const response = await fetch(img.src);
+                const blob = await response.blob();
+                // Convert to PNG if needed (clipboard API requires PNG for images)
+                let pngBlob = blob;
+                if (blob.type !== 'image/png') {
+                    pngBlob = await convertToPng(img);
+                }
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': pngBlob })
+                ]);
+                showToast('Image copied to clipboard');
+            } catch (e) {
+                showToast('Failed to copy image', 'error');
+            }
+        }
+
+        function convertToPng(img) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob(resolve, 'image/png');
+            });
+        }
     </script>
     {% endif %}
 
@@ -151,13 +215,6 @@
 
         function closeModal(id) {
             document.getElementById(id).classList.remove('active');
-        }
-
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast ${type} active`;
-            setTimeout(() => toast.classList.remove('active'), 5000);
         }
 
         function updateRenameButton() {
