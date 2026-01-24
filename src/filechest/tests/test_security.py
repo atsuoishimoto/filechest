@@ -1,4 +1,5 @@
 """Security tests for path traversal and backslash handling."""
+
 import json
 from io import BytesIO
 from pathlib import Path

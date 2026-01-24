@@ -1,4 +1,5 @@
 """Storage backend tests."""
+
 import shutil
 import tempfile
 from pathlib import Path
@@ -180,9 +181,7 @@ def test_local_copy_file(local_storage):
 
     local_storage.copy("source.txt", "dest")
     assert (Path(local_storage.root) / "source.txt").exists()
-    assert (
-        Path(local_storage.root) / "dest" / "source.txt"
-    ).read_text() == "content"
+    assert (Path(local_storage.root) / "dest" / "source.txt").read_text() == "content"
 
 
 def test_local_copy_dir(local_storage):
@@ -202,9 +201,7 @@ def test_local_move_file(local_storage):
 
     local_storage.move("tomove.txt", "dest")
     assert not (Path(local_storage.root) / "tomove.txt").exists()
-    assert (
-        Path(local_storage.root) / "dest" / "tomove.txt"
-    ).read_text() == "content"
+    assert (Path(local_storage.root) / "dest" / "tomove.txt").read_text() == "content"
 
 
 def test_local_path_traversal_blocked(local_storage):
@@ -232,9 +229,7 @@ def test_s3_list_empty_dir(s3_storage):
 
 def test_s3_list_dir_with_files(s3_storage):
     """List directory with files and folders."""
-    s3_storage.s3.put_object(
-        Bucket=s3_storage.bucket, Key="file.txt", Body=b"content"
-    )
+    s3_storage.s3.put_object(Bucket=s3_storage.bucket, Key="file.txt", Body=b"content")
     s3_storage.s3.put_object(Bucket=s3_storage.bucket, Key="folder/.dir", Body=b"")
 
     items = s3_storage.list_dir("")
@@ -246,9 +241,7 @@ def test_s3_list_dir_with_files(s3_storage):
 
 def test_s3_get_info_file(s3_storage):
     """Get info for a file."""
-    s3_storage.s3.put_object(
-        Bucket=s3_storage.bucket, Key="test.txt", Body=b"hello"
-    )
+    s3_storage.s3.put_object(Bucket=s3_storage.bucket, Key="test.txt", Body=b"hello")
 
     info = s3_storage.get_info("test.txt")
     assert info.name == "test.txt"
@@ -258,9 +251,7 @@ def test_s3_get_info_file(s3_storage):
 
 def test_s3_get_info_dir(s3_storage):
     """Get info for a directory (implicit via file)."""
-    s3_storage.s3.put_object(
-        Bucket=s3_storage.bucket, Key="mydir/file.txt", Body=b"x"
-    )
+    s3_storage.s3.put_object(Bucket=s3_storage.bucket, Key="mydir/file.txt", Body=b"x")
 
     info = s3_storage.get_info("mydir")
     assert info.name == "mydir"
@@ -341,9 +332,7 @@ def test_s3_mkdir_file_collision(s3_storage):
 
 def test_s3_delete_file(s3_storage):
     """Test delete file."""
-    s3_storage.s3.put_object(
-        Bucket=s3_storage.bucket, Key="todelete.txt", Body=b"x"
-    )
+    s3_storage.s3.put_object(Bucket=s3_storage.bucket, Key="todelete.txt", Body=b"x")
 
     s3_storage.delete("todelete.txt")
     assert not s3_storage.exists("todelete.txt")
@@ -351,9 +340,7 @@ def test_s3_delete_file(s3_storage):
 
 def test_s3_delete_dir(s3_storage):
     """Test delete directory recursively."""
-    s3_storage.s3.put_object(
-        Bucket=s3_storage.bucket, Key="dir/file.txt", Body=b"x"
-    )
+    s3_storage.s3.put_object(Bucket=s3_storage.bucket, Key="dir/file.txt", Body=b"x")
     s3_storage.s3.put_object(
         Bucket=s3_storage.bucket, Key="dir/subdir/file2.txt", Body=b"y"
     )
@@ -371,9 +358,7 @@ def test_s3_delete_root_fails(s3_storage):
 
 def test_s3_rename_file(s3_storage):
     """Test rename file."""
-    s3_storage.s3.put_object(
-        Bucket=s3_storage.bucket, Key="old.txt", Body=b"content"
-    )
+    s3_storage.s3.put_object(Bucket=s3_storage.bucket, Key="old.txt", Body=b"content")
 
     s3_storage.rename("old.txt", "new.txt")
     assert not s3_storage.exists("old.txt")
@@ -382,9 +367,7 @@ def test_s3_rename_file(s3_storage):
 
 def test_s3_rename_dir(s3_storage):
     """Test rename directory."""
-    s3_storage.s3.put_object(
-        Bucket=s3_storage.bucket, Key="olddir/file.txt", Body=b"x"
-    )
+    s3_storage.s3.put_object(Bucket=s3_storage.bucket, Key="olddir/file.txt", Body=b"x")
 
     s3_storage.rename("olddir", "newdir")
     assert not s3_storage.exists("olddir")
@@ -405,9 +388,7 @@ def test_s3_copy_file(s3_storage):
 
 def test_s3_copy_dir(s3_storage):
     """Test copy directory to non-existent directory."""
-    s3_storage.s3.put_object(
-        Bucket=s3_storage.bucket, Key="srcdir/file.txt", Body=b"x"
-    )
+    s3_storage.s3.put_object(Bucket=s3_storage.bucket, Key="srcdir/file.txt", Body=b"x")
 
     s3_storage.copy("srcdir", "newdir")
     assert s3_storage.exists("srcdir/file.txt")
@@ -591,9 +572,7 @@ def test_s3_storage_respects_limit(settings):
         s3_client.create_bucket(Bucket=bucket_name)
 
         for i in range(10):
-            s3_client.put_object(
-                Bucket=bucket_name, Key=f"file{i:02d}.txt", Body=b"x"
-            )
+            s3_client.put_object(Bucket=bucket_name, Key=f"file{i:02d}.txt", Body=b"x")
 
         storage = S3Storage(bucket_name, prefix="", s3_client=s3_client)
         items = storage.list_dir("")

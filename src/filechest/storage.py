@@ -651,7 +651,6 @@ class S3Storage(BaseStorage):
 
         max_entries = getattr(settings, "FILECHEST_MAX_DIR_ENTRIES", 1000)
 
-
         full_prefix = self._full_key(path)
 
         # Check if directory exists
@@ -699,7 +698,6 @@ class S3Storage(BaseStorage):
         return items
 
     def get_info(self, path: str) -> FileInfo:
-
         if not path:
             raise PathNotFoundError("Cannot get info for root", "")
 
@@ -767,7 +765,6 @@ class S3Storage(BaseStorage):
             return None
 
     def open_file(self, path: str) -> tuple[BinaryIO, str | None, int]:
-
         if not path:
             raise NotAFileError("Root is not a file", "")
 
@@ -784,7 +781,6 @@ class S3Storage(BaseStorage):
             raise
 
     def write_file(self, path: str, content: Iterator[bytes]) -> None:
-
         if not path:
             raise InvalidPathError("Cannot write to root", "")
 
@@ -818,7 +814,6 @@ class S3Storage(BaseStorage):
         # The directory will "exist" once files are uploaded to it
 
     def delete(self, path: str) -> None:
-
         if not path:
             raise InvalidPathError("Cannot delete root", "")
 
@@ -849,7 +844,6 @@ class S3Storage(BaseStorage):
                 self.s3.delete_objects(Bucket=self.bucket, Delete={"Objects": batch})
 
     def rename(self, path: str, new_name: str) -> None:
-
         if not path:
             raise InvalidPathError("Cannot rename root", "")
 
@@ -900,7 +894,6 @@ class S3Storage(BaseStorage):
                 self.s3.delete_object(Bucket=self.bucket, Key=old_obj_key)
 
     def copy(self, src_path: str, dest_dir: str) -> None:
-
         if not src_path:
             raise InvalidPathError("Cannot copy root", "")
 
@@ -946,7 +939,6 @@ class S3Storage(BaseStorage):
                 )
 
     def move(self, src_path: str, dest_dir: str) -> None:
-
         if not src_path:
             raise InvalidPathError("Cannot move root", "")
 
