@@ -187,6 +187,29 @@
             </div>
         </div>
     </div>
+
+    <!-- Copy/Move Modal -->
+    <div id="modal-copymove" class="modal">
+        <div class="modal-content modal-upload-content">
+            <h3 id="copymove-title">Copy Files</h3>
+            <div class="upload-file-list" id="copymove-file-list"></div>
+            <div class="form-group">
+                <label for="copymove-dest">Destination:</label>
+                <input type="text" id="copymove-dest" placeholder="/">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="copymove-create-dir">
+                    Create directory if it doesn't exist
+                </label>
+            </div>
+            <div id="copymove-error" class="upload-error"></div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeCopyMoveModal()">Cancel</button>
+                <button class="btn-ok" id="btn-copymove-ok" onclick="executeCopyMove()">Copy</button>
+            </div>
+        </div>
+    </div>
     {% endif %}
 
     <!-- Toast -->
@@ -484,11 +507,8 @@
 
             if (clipboard && clipboard.items.length > 0) {
                 const count = clipboard.items.length;
-                // Check if any marked item is in the current directory
-                const isSourceDir = clipboard.items.some(item => getParentPath(item) === currentPath);
-
-                copyBtn.disabled = isSourceDir;
-                moveBtn.disabled = isSourceDir;
+                copyBtn.disabled = false;
+                moveBtn.disabled = false;
                 copyBtn.textContent = `📋 Copy (${count})`;
                 moveBtn.textContent = `📦 Move (${count})`;
                 clearBtn.style.display = 'inline-block';
@@ -527,34 +547,103 @@
             clearSelection();
         }
 
-        async function copyHere() {
-            const clipboard = getClipboard();
-            if (!clipboard) return;
+        let copyMoveMode = null; // 'copy' or 'move'
 
-            const result = await apiCall('copy', {
+        function getFileName(path) {
+            return path.split('/').pop();
+        }
+
+        function showCopyMoveModal(mode) {
+            const clipboard = getClipboard();
+            if (!clipboard || clipboard.items.length === 0) return;
+
+            copyMoveMode = mode;
+            const isCopy = mode === 'copy';
+
+            // Set title and button text
+            document.getElementById('copymove-title').textContent = isCopy ? 'Copy Files' : 'Move Files';
+            document.getElementById('btn-copymove-ok').textContent = isCopy ? 'Copy' : 'Move';
+
+            // Build file list
+            const fileListEl = document.getElementById('copymove-file-list');
+            fileListEl.innerHTML = clipboard.items.map(path => `
+                <div class="upload-file-item">
+                    <span class="upload-file-name">${getFileName(path)}</span>
+                    <span class="upload-file-size">${path}</span>
+                </div>
+            `).join('');
+
+            // Set default destination
+            document.getElementById('copymove-dest').value = currentPath || '/';
+            document.getElementById('copymove-create-dir').checked = false;
+            document.getElementById('copymove-error').classList.remove('active');
+            document.getElementById('copymove-error').textContent = '';
+
+            showModal('modal-copymove');
+        }
+
+        function closeCopyMoveModal() {
+            closeModal('modal-copymove');
+            copyMoveMode = null;
+        }
+
+        async function executeCopyMove() {
+            const clipboard = getClipboard();
+            if (!clipboard || !copyMoveMode) return;
+
+            let destPath = normalizePath(document.getElementById('copymove-dest').value.trim());
+            // Normalize path: remove leading/trailing slashes, handle root
+            if (destPath === '/' || destPath === '') {
+                destPath = '';
+            } else {
+                destPath = destPath.replace(/^\/+|\/+$/g, '');
+            }
+
+            // If checkbox is checked, create the directory
+            const createDir = document.getElementById('copymove-create-dir').checked;
+            if (createDir && destPath) {
+                const parts = destPath.split('/');
+                const name = parts.pop();
+                const path = parts.join('/');
+                const mkdirResult = await apiCall('mkdir', { path, name, parents: true, exists_ok: true });
+                if (!mkdirResult.success) {
+                    const errorEl = document.getElementById('copymove-error');
+                    errorEl.textContent = mkdirResult.error || 'Failed to create directory';
+                    errorEl.classList.add('active');
+                    return;
+                }
+            }
+
+            const isCopy = copyMoveMode === 'copy';
+            const endpoint = isCopy ? 'copy' : 'move';
+            const result = await apiCall(endpoint, {
                 items: clipboard.items,
-                destination: currentPath
+                destination: destPath
             });
 
+            // Check for destination directory error
+            if (result.error) {
+                const errorEl = document.getElementById('copymove-error');
+                errorEl.textContent = result.error;
+                errorEl.classList.add('active');
+                return;
+            }
+
+            closeCopyMoveModal();
             clearClipboard();
-            const successMsg = result.copied.length > 0 ? `${result.copied.length} item(s) copied` : null;
-            const title = result.errors.length > 0 ? 'Copy Result' : 'Copied';
+
+            const resultKey = isCopy ? 'copied' : 'moved';
+            const successMsg = result[resultKey].length > 0 ? `${result[resultKey].length} item(s) ${resultKey}` : null;
+            const title = result.errors.length > 0 ? `${isCopy ? 'Copy' : 'Move'} Result` : (isCopy ? 'Copied' : 'Moved');
             showResult(title, successMsg, result.errors, 'item');
         }
 
-        async function moveHere() {
-            const clipboard = getClipboard();
-            if (!clipboard) return;
+        function copyHere() {
+            showCopyMoveModal('copy');
+        }
 
-            const result = await apiCall('move', {
-                items: clipboard.items,
-                destination: currentPath
-            });
-
-            clearClipboard();
-            const successMsg = result.moved.length > 0 ? `${result.moved.length} item(s) moved` : null;
-            const title = result.errors.length > 0 ? 'Move Result' : 'Moved';
-            showResult(title, successMsg, result.errors, 'item');
+        function moveHere() {
+            showCopyMoveModal('move');
         }
 
         // File upload configuration (from server)
@@ -921,6 +1010,8 @@
                 document.querySelectorAll('.modal.active').forEach(modal => {
                     if (modal.id === 'modal-upload') {
                         closeUploadModal();
+                    } else if (modal.id === 'modal-copymove') {
+                        closeCopyMoveModal();
                     } else {
                         closeModal(modal.id);
                     }
