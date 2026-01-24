@@ -617,6 +617,8 @@ def api_upload(request, volume_name: str):
         try:
             storage.write_file(dest_path, f.chunks())
             uploaded.append(display_name)
+        except PathExistsError as e:
+            errors.append({"file": display_name, "error": e.message})
         except InvalidPathError as e:
             errors.append({"file": display_name, "error": e.message})
         except PermissionDeniedError as e:

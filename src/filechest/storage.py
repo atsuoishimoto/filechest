@@ -432,6 +432,10 @@ class LocalStorage(BaseStorage):
     def write_file(self, path: str, content: Iterator[bytes]) -> None:
         target = self._resolve(path)
 
+        # Check if file already exists
+        if target.exists():
+            raise PathExistsError("File already exists", path)
+
         # Create parent directories if needed
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -785,6 +789,10 @@ class S3Storage(BaseStorage):
             raise InvalidPathError("Cannot write to root", "")
 
         key = self._full_key(path)
+
+        # Check if file already exists
+        if self._object_exists(key):
+            raise PathExistsError("File already exists", path)
 
         # Collect content into bytes
         data = b"".join(content)

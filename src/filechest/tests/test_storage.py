@@ -99,7 +99,8 @@ def test_local_open_file(local_storage):
     with file_obj as f:
         content = f.read()
     assert content == b"binary data"
-    assert etag is None
+    assert etag is not None  # LocalStorage returns SHA256-based ETag
+    assert etag.startswith('"') and etag.endswith('"')  # ETag format
     assert size == 11
 
 
