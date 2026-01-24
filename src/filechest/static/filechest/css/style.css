@@ -436,7 +436,7 @@ body {
     display: flex;
     gap: 2px;
     margin-left: auto;
-    background: var(--color-border-light);
+    /*background: var(--color-border-light);*/
     border-radius: 4px;
     padding: 2px;
 }
@@ -459,7 +459,7 @@ body {
 .view-toggle button.active {
     background: var(--color-bg-card);
     opacity: 1;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.9);
 }
 
 /* -----------------------------------------------------------------------------
