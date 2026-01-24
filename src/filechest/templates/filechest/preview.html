@@ -87,10 +87,10 @@
     <div id="modal-rename" class="modal">
         <div class="modal-content">
             <h3>Rename</h3>
-            <input type="text" id="rename-name" placeholder="New name">
+            <input type="text" id="rename-name" placeholder="New name" oninput="updateRenameButton()">
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="closeModal('modal-rename')">Cancel</button>
-                <button class="btn-ok" onclick="renameItem()">Rename</button>
+                <button id="btn-rename-ok" class="btn-ok" onclick="renameItem()" disabled>Rename</button>
             </div>
         </div>
     </div>
@@ -160,8 +160,15 @@
             setTimeout(() => toast.classList.remove('active'), 5000);
         }
 
+        function updateRenameButton() {
+            const newName = document.getElementById('rename-name').value.trim();
+            const btn = document.getElementById('btn-rename-ok');
+            btn.disabled = !newName || newName === filename;
+        }
+
         function showRenameModal() {
             document.getElementById('rename-name').value = filename;
+            updateRenameButton();
             showModal('modal-rename');
             document.getElementById('rename-name').focus();
         }

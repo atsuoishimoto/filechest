@@ -145,10 +145,10 @@
     <div id="modal-rename" class="modal">
         <div class="modal-content">
             <h3>Rename</h3>
-            <input type="text" id="rename-name" placeholder="New name">
+            <input type="text" id="rename-name" placeholder="New name" oninput="updateRenameButton()">
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="closeModal('modal-rename')">Cancel</button>
-                <button class="btn-ok" onclick="renameItem()">Rename</button>
+                <button id="btn-rename-ok" class="btn-ok" onclick="renameItem()" disabled>Rename</button>
             </div>
         </div>
     </div>
@@ -381,9 +381,16 @@
 
         let renameTargetName = null;
 
+        function updateRenameButton() {
+            const newName = document.getElementById('rename-name').value.trim();
+            const btn = document.getElementById('btn-rename-ok');
+            btn.disabled = !newName || newName === renameTargetName;
+        }
+
         function showRenameModal(itemName) {
             renameTargetName = itemName;
             document.getElementById('rename-name').value = itemName;
+            updateRenameButton();
             showModal('modal-rename');
             document.getElementById('rename-name').focus();
         }
