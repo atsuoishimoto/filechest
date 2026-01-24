@@ -22,6 +22,8 @@ from django.utils.text import slugify
 from hashlib import sha256
 from shutil import rmtree
 
+from django_filechest import __version__
+
 
 def is_s3_bucket_list_mode(path: str) -> bool:
     """Check if the path requests S3 bucket listing mode."""
@@ -36,6 +38,12 @@ def sanitize_bucket_name(bucket_name: str) -> str:
 parser = argparse.ArgumentParser(
     description="Start a file manager for a directory or S3 bucket",
     prog="filechest",
+)
+parser.add_argument(
+    "-v",
+    "--version",
+    action="version",
+    version=f"%(prog)s {__version__}",
 )
 parser.add_argument(
     "path",
