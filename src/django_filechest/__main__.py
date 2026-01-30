@@ -145,6 +145,11 @@ def main():
 
         max_buckets = getattr(settings, "FILECHEST_MAX_S3_BUCKETS", 100)
 
+        # Get target bucket and prefix if specified via command line
+        target_bucket, prefix = None, None
+        if not is_s3_bucket_list_mode(path):
+            target_bucket, prefix = parse_s3_path(path)
+
         try:
             buckets = list_s3_buckets()
         except Exception as e:
@@ -155,6 +160,9 @@ def main():
             print("No S3 buckets found", file=sys.stderr)
             sys.exit(1)
 
+        # Check if target bucket exists before limiting
+        target_bucket_exists = target_bucket in buckets if target_bucket else False
+
         # Limit the number of buckets
         if len(buckets) > max_buckets:
             print(
@@ -162,6 +170,10 @@ def main():
                 file=sys.stderr,
             )
             buckets = buckets[:max_buckets]
+
+            # Ensure the target bucket is always included if it exists
+            if target_bucket_exists and target_bucket not in buckets:
+                buckets.append(target_bucket)
 
         # Create a volume for each bucket
         for bucket_name in buckets:
@@ -181,7 +193,6 @@ def main():
             display_path = "S3 (all buckets)"
         else:
             # Open the specified bucket (with optional prefix as subpath)
-            target_bucket, prefix = parse_s3_path(path)
             volume_name = sanitize_bucket_name(target_bucket)
 
             if target_bucket not in buckets:
